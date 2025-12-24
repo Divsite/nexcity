@@ -1,0 +1,37 @@
+<?php
+
+return [
+    'register_enabled' => env('REGISTER_ENABLED', true),
+    'verify_enabled' => env('VERIFY_ENABLED', true),
+    'register_link' => env('REGISTER_LINK', '/register'),
+    'language_switcher_enabled' => env('LANGUAGE_SWITCHER_ENABLED', true),
+    'custom_profile_enabled' => env('CUSTOM_PROFILE_ENABLED', false),
+    'profile_route_name' => env('PROFILE_ROUTE_NAME', 'profile.index'),
+    'ensure_profile_is_completed' => env('ENSURE_PROFILE_IS_COMPLETED', false),
+    'ensure_password_is_changed' => env('ENSURE_PASSWORD_IS_CHANGED', false),
+    'password_route_name' => env('PASSWORD_ROUTE_NAME', 'profile.changed-password-form'),
+    'password_rules' => [
+        'enabled' => env('PASSWORD_RULES_ENABLED', false),
+        'min' => env('PASSWORD_RULES_MIN', 8),
+        'letter' => env('PASSWORD_RULES_LETTER', false),
+        'mixed_case' => env('PASSWORD_RULES_MIXED_CASE', false),
+        'number' => env('PASSWORD_RULES_NUMBER', false),
+        'symbol' => env('PASSWORD_RULES_SYMBOL', false),
+        'uncompromised' => env('PASSWORD_RULES_UNCOMPROMISED', false),
+    ],
+    'custom_user_module_enabled' => env('CUSTOM_USER_MODULE_ENABLED', false),
+    'user_module_route_name' => env('USER_MODULE_ROUTE_NAME', 'users.index'),
+    'custom_module_menu_enabled' => env('CUSTOM_MODULE_MENU_ENABLED', false),
+    'custom_module_menu_view' => env('CUSTOM_MODULE_MENU_VIEW', null),
+    'dashboard_layouts' => [
+        'layout' => env('DASHBOARD_LAYOUT', 'vertical'),
+        'width' => env('DASHBOARD_WIDTH', 'fluid'),
+        'topbar' => env('DASHBOARD_TOPBAR', 'light'),
+        'layout_style' => env('DASHBOARD_LAYOUT_STYLE', 'default'),
+    ],
+    'custom_management_menu_enabled' => env('CUSTOM_MANAGEMENT_MENU_ENABLED', false),
+    'custom_management_menu_view' => env('CUSTOM_MANAGEMENT_MENU_VIEW', null),
+    'custom_setting_menu_enabled' => env('CUSTOM_SETTING_MENU_ENABLED', false),
+    'custom_setting_menu_view' => env('CUSTOM_SETTING_MENU_VIEW', null),
+    'allow_multiple_sessions' => env('ALLOW_MULTIPLE_SESSIONS', true),
+];
