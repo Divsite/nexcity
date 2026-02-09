@@ -39,7 +39,7 @@ export default defineConfig({
                 'resources/js/views/settings/menus/form.js',
                 'resources/js/views/settings/partner-users/create.js',
                 'resources/js/views/settings/partner-users/edit.js',
-                'resources/js/views/settings/use-management/index.js',
+                'resources/js/views/settings/user-management/index.js',
             ],
             refresh: true,
         }),
