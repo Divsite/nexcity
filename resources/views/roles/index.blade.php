@@ -2,7 +2,7 @@
 
 @section('title', __('messages.roles'))
 
-@section('breadcrumbs', Breadcrumbs::render('settings.roles.index'))
+@section('breadcrumbs', Breadcrumbs::render('roles.index'))
 
 @section('content')
     <div id="app" class="row">
@@ -19,7 +19,7 @@
                         <div class="col-sm-auto">
                             <div class="d-flex gap-1 flex-wrap">
                                 @can('add-roles')
-                                    <a href="{{ route('settings.roles.create') }}" class="btn btn-success">
+                                    <a href="{{ route('roles.create') }}" class="btn btn-success">
                                         <i class="ri-add-line align-bottom me-1"></i> {{ __('messages.create_role') }}
                                     </a>
                                 @endcan

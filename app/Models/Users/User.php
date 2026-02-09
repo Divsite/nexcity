@@ -4,16 +4,25 @@ namespace App\Models\Users;
 
 use App\Models\ActivityLogs\ActivityLog;
 use App\Models\Events\Event;
+use App\Models\Organizations\Organization;
+use App\Models\Organizations\OrganizationUser;
+use App\Models\Profiles\UserCorporateProfile;
+use App\Models\Profiles\UserInstitutionProfile;
+use App\Models\Profiles\UserMosqueProfile;
+use App\Models\Profiles\UserResidentProfile;
+use App\Models\Profiles\UserRtProfile;
+use App\Models\Profiles\UserUmkmProfile;
 use App\Notifications\Users\ResetPassword as ResetPasswordNotification;
 use App\Notifications\Users\VerifyEmail as VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
-use ReflectionClass;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -29,8 +38,6 @@ class User extends Authenticatable implements MustVerifyEmail
     const AVATAR_NOT_INITIAL_NAME = 2;
 
     public $guarded = [];
-
-    protected $with = ['profile'];
 
     /**
      * The "booted" method of the model.
@@ -87,10 +94,47 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->notify(new ResetPasswordNotification($token));
     }
 
-    public function profile(): HasOne
+    public function residentProfile(): HasOne
     {
-        $profileClass = new ReflectionClass(str_replace('::class', '', config('models.profile')));
-        return $this->hasOne($profileClass->getName(), 'user_id', 'id');
+        return $this->hasOne(UserResidentProfile::class);
+    }
+
+    public function mosqueProfile(): HasOne
+    {
+        return $this->hasOne(UserMosqueProfile::class);
+    }
+
+    public function rtProfile(): HasOne
+    {
+        return $this->hasOne(UserRtProfile::class);
+    }
+
+    public function umkmProfile(): HasOne
+    {
+        return $this->hasOne(UserUmkmProfile::class);
+    }
+
+    public function corporateProfile(): HasOne
+    {
+        return $this->hasOne(UserCorporateProfile::class);
+    }
+
+    public function institutionProfile(): HasOne
+    {
+        return $this->hasOne(UserInstitutionProfile::class);
+    }
+
+    public function organizations(): BelongsToMany
+    {
+        return $this->belongsToMany(Organization::class, 'organization_user')
+            ->using(OrganizationUser::class)
+            ->withPivot(['role', 'level_slug', 'is_primary', 'joined_at'])
+            ->withTimestamps();
+    }
+
+    public function organizationMemberships(): HasMany
+    {
+        return $this->hasMany(OrganizationUser::class);
     }
 
     public function hostEvents()

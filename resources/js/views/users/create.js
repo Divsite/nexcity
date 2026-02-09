@@ -1,4 +1,9 @@
 import { createApp } from "vue";
+import { select2 } from "../../directives/select2";
+
+const payload = window.userCreatePayload || {
+    organizationOptionsByRole: {},
+};
 
 createApp({
     data() {
@@ -10,6 +15,7 @@ createApp({
                 phone: '',
                 status: '',
                 role: '',
+                organization_id: '',
                 avatar: '',
                 password: '',
                 password_confirmation: '',
@@ -20,17 +26,48 @@ createApp({
             submit_form_key: 0,
             errors: [],
             loading: false,
+            organizationOptionsByRole: payload.organizationOptionsByRole || {},
         }
     },
+    directives: { select2 },
     computed: {
         passwordType() {
             return this.show_password ? 'text' : 'password';
         },
         passwordConfirmationType() {
             return this.show_password_confirmation ? 'text' : 'password';
-        }
+        },
+        organizationOptions() {
+            return this.organizationOptionsByRole[this.form.role] || [];
+        },
+        showOrganizationSelect() {
+            return this.organizationOptions.length > 0;
+        },
+    },
+    mounted() {
+        this.initializeSelect2();
+    },
+    watch: {
+        'form.role'() {
+            this.form.organization_id = '';
+            this.initializeSelect2();
+        },
     },
     methods: {
+        initializeSelect2() {
+            this.$nextTick(() => {
+                if (window.$) {
+                    $(".select2").select2({
+                        language: {
+                            noResults: function () {
+                                return messages.no_results_found;
+                            },
+                        },
+                        width: "100%",
+                    });
+                }
+            });
+        },
         togglePassword: function () {
             this.show_password = !this.show_password;
         },
@@ -56,6 +93,9 @@ createApp({
             data.append('phone', this.form.phone);
             data.append('status', this.form.status);
             data.append('role', this.form.role);
+            if (this.form.organization_id) {
+                data.append('organization_id', this.form.organization_id);
+            }
             data.append('password', this.form.password);
             data.append('password_confirmation', this.form.password_confirmation);
             data.append('avatar', this.form.avatar);

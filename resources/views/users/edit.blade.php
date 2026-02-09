@@ -193,7 +193,7 @@
         let model = {{ \Illuminate\Support\Js::from($model) }};
         let userRole = "{{ $userRole }}";
         let verified = {{ $verified }};
-        let user_avatar = '{{ asset(\App\Models\Users\User::AVATAR_PATH . $model->avatar) }}';
+        let user_avatar = '{{ asset('storage/' . \App\Models\Users\User::AVATAR_PATH . $model->avatar) }}';
         let default_avatar = '{{ Avatar::create($model->name)->toBase64() }}';
         let avatar_initial_name = {{ \App\Models\Users\User::AVATAR_INITIAL_NAME }};
         let avatar_not_initial_name = {{ \App\Models\Users\User::AVATAR_NOT_INITIAL_NAME }};

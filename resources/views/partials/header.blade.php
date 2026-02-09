@@ -45,7 +45,10 @@
                         <button type="button"
                                 class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle shadow-none"
                                 data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            @if(App::getLocale() == 'ms')
+                            @if(App::getLocale() == 'id')
+                                <img src="{{ asset('assets/images/flags/id.svg') }}" alt="Header Language" height="20"
+                                     class="rounded">
+                            @elseif(App::getLocale() == 'ms')
                                 <img src="{{ asset('assets/images/flags/my.svg') }}" alt="Header Language" height="20"
                                      class="rounded">
                             @else
@@ -61,6 +64,13 @@
                                      class="me-2 rounded"
                                      height="18">
                                 <span class="align-middle">English</span>
+                            </a>
+                            <a href="{{ route('change-locale', 'id') }}" class="dropdown-item notify-item language py-2"
+                               data-lang="id" title="Indonesia">
+                                <img src="{{ asset('assets/images/flags/id.svg') }}" alt="user-image"
+                                     class="me-2 rounded"
+                                     height="18">
+                                <span class="align-middle">Indonesia</span>
                             </a>
                             <a href="{{ route('change-locale', 'ms') }}" class="dropdown-item notify-item language py-2"
                                data-lang="ms" title="English">

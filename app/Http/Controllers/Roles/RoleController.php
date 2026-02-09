@@ -75,7 +75,7 @@ class RoleController extends Controller
             ->log(__('messages.roles_has_been_created', ['name' => $model->name]));
 
         // Redirect
-        return response()->json(['success' => true, 'redirect' => route('settings.roles.index')]);
+        return response()->json(['success' => true, 'redirect' => route('roles.index')]);
     }
 
     /**
@@ -145,7 +145,7 @@ class RoleController extends Controller
             ->log(__('messages.roles_has_been_updated', ['name' => $model->name]));
 
         // Redirect
-        return response()->json(['success' => true, 'redirect' => route('settings.roles.index')]);
+        return response()->json(['success' => true, 'redirect' => route('roles.index')]);
     }
 
     /**
@@ -168,6 +168,6 @@ class RoleController extends Controller
         }
 
         // Redirect
-        return response()->json(['success' => true, 'redirect' => route('settings.roles.index')]);
+        return response()->json(['success' => true, 'redirect' => route('roles.index')]);
     }
 }

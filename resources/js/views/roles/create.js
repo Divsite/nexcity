@@ -30,7 +30,7 @@ createApp({
                 permissions: this.form.permissions,
             };
 
-            await axios.post(route('settings.roles.store'), data).then(response => {
+            await axios.post(route('roles.store'), data).then(response => {
                 this.errors = []; // Clear errors
                 this.loading = false; // Stop loading
 

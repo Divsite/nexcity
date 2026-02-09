@@ -83,7 +83,7 @@ class RegisterController extends Controller
         // Create default avatar
         $fileName = Str::random(30).'.png';
         $avatar = new Avatar(config('laravolt.avatar'));
-        $avatar->create($user->name)->save(storage_path('app/'.User::AVATAR_PATH.$fileName), 100);
+        $avatar->create($user->name)->save(storage_path('app/public/'.User::AVATAR_PATH.$fileName), 100);
         $user->avatar = $fileName;
         $user->initial_name = User::AVATAR_INITIAL_NAME;
         $user->update();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Users;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\CreateUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
+use App\Models\Organizations\Organization;
 use App\Models\Roles\Role;
 use App\Models\Users\User;
 use Illuminate\Support\Facades\Hash;
@@ -45,9 +46,11 @@ class UserController extends Controller
         }
 
         $roles = Role::all()->pluck('display_name', 'name');
+        $organizationOptionsByRole = $this->organizationOptionsByRole();
 
         return view('users.create', [
             'roles' => $roles,
+            'organizationOptionsByRole' => $organizationOptionsByRole,
         ]);
     }
 
@@ -77,16 +80,36 @@ class UserController extends Controller
         $fileName = Str::random(30) . '.png';
 
         if ($request->hasFile('avatar')) {
-            $request->file('avatar')->storeAs(User::AVATAR_PATH, $fileName);
+            $request->file('avatar')->storePubliclyAs(User::AVATAR_PATH, $fileName, 'public');
             $model->initial_name = User::AVATAR_NOT_INITIAL_NAME;
         } else {
-            Avatar::create($model->name)->save(storage_path('app/' . User::AVATAR_PATH . $fileName), 100);
+            Avatar::create($model->name)->save(storage_path('app/public/' . User::AVATAR_PATH . $fileName), 100);
             $model->initial_name = User::AVATAR_INITIAL_NAME;
         }
 
         $model->avatar = $fileName;
 
         $model->save();
+
+        if (! empty($validated['organization_id'])) {
+            $organization = Organization::query()->find($validated['organization_id']);
+
+            if ($organization) {
+                $levelSlugMap = [
+                    'rt_admin' => 'rt-superadmin',
+                    'mosque_admin' => 'mosque-superadmin',
+                ];
+
+                $model->organizations()->syncWithoutDetaching([
+                    $organization->id => [
+                        'role' => $validated['role'],
+                        'level_slug' => $levelSlugMap[$validated['role']] ?? null,
+                        'is_primary' => true,
+                        'joined_at' => now(),
+                    ],
+                ]);
+            }
+        }
 
         if ($validated['status'] == User::VERIFIED) {
             $model->markEmailAsVerified();
@@ -105,6 +128,47 @@ class UserController extends Controller
 
         // Redirect
         return response()->json(['success' => true, 'redirect' => route('users.index')]);
+    }
+
+    private function organizationOptionsByRole(): array
+    {
+        $organizationOptionsByRole = [];
+
+        $roleFilters = [
+            'rt_admin' => fn ($query) => $query->where('type', Organization::TYPE_RT),
+            'mosque_admin' => fn ($query) => $query->where('type', Organization::TYPE_MOSQUE),
+            'umkm_admin' => fn ($query) => $query->where('type', Organization::TYPE_UMKM),
+            'institusi_admin' => fn ($query) => $query->where('type', Organization::TYPE_INSTITUTION),
+            'corporate_admin' => fn ($query) => $query->whereHas('category', fn ($q) => $q->where('slug', 'corporate')),
+        ];
+
+        foreach ($roleFilters as $role => $filter) {
+            $organizationOptionsByRole[$role] = Organization::query()
+                ->tap($filter)
+                ->with(['neighborhoodAssociation', 'citizensAssociation', 'village'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'neighborhood_association_id', 'citizens_association_id', 'village_id'])
+                ->map(function ($org) {
+                    $rt = $org->neighborhoodAssociation?->number;
+                    $rw = $org->citizensAssociation?->number;
+                    $village = $org->village?->name;
+                    $parts = array_filter([
+                        $rt ? 'RT ' . $rt : null,
+                        $rw ? 'RW ' . $rw : null,
+                        $village,
+                    ]);
+
+                    $label = $org->name;
+                    if (! empty($parts)) {
+                        $label .= ' (' . implode(' / ', $parts) . ')';
+                    }
+
+                    return ['id' => $org->id, 'name' => $label];
+                })
+                ->toArray();
+        }
+
+        return $organizationOptionsByRole;
     }
 
     /**
@@ -182,18 +246,18 @@ class UserController extends Controller
         $model->syncRoles($validated['role']);
 
         if ($request->hasFile('avatar')) {
-            Storage::delete(User::AVATAR_PATH . $model->avatar);
+            Storage::disk('public')->delete(User::AVATAR_PATH . $model->avatar);
             $avatar = $request->file('avatar');
             $fileName = $avatar->hashName();
-            $avatar->store(User::AVATAR_PATH);
+            $avatar->storePublicly(User::AVATAR_PATH, 'public');
             $model->avatar = $fileName;
             $model->initial_name = User::AVATAR_NOT_INITIAL_NAME;
         }
 
         if ($model->initial_name == User::AVATAR_INITIAL_NAME) {
-            Storage::delete(User::AVATAR_PATH . $model->avatar);
+            Storage::disk('public')->delete(User::AVATAR_PATH . $model->avatar);
             $fileName = Str::random(30) . '.png';
-            Avatar::create($model->name)->save(storage_path('app/' . User::AVATAR_PATH . $fileName), 100);
+            Avatar::create($model->name)->save(storage_path('app/public/' . User::AVATAR_PATH . $fileName), 100);
             $model->avatar = $fileName;
         }
 

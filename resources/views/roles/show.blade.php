@@ -2,7 +2,7 @@
 
 @section('title', __('messages.view_role'))
 
-@section('breadcrumbs', Breadcrumbs::render('settings.roles.show', $model))
+@section('breadcrumbs', Breadcrumbs::render('roles.show', $model))
 
 @section('content')
     <div id="app" class="row">
@@ -18,7 +18,7 @@
                         <div class="col-sm-auto">
                             <div class="d-flex gap-1 flex-wrap">
                                 @can('edit-roles')
-                                    <a href="{{ route('settings.roles.edit', ['role' => $model->id]) }}" class="btn btn-sm btn-info btn-icon me-1" data-bs-toggle="tooltip"
+                                    <a href="{{ route('roles.edit', ['role' => $model->id]) }}" class="btn btn-sm btn-info btn-icon me-1" data-bs-toggle="tooltip"
                                        data-bs-trigger="hover"
                                        data-bs-placement="top" title="{{ __('messages.edit') }}"
                                        data-bs-original-title="{{ __('messages.edit') }}">
@@ -33,7 +33,7 @@
                                             <button class="btn btn-sm btn-danger btn-icon"
                                                     data-bs-original-title="{{ __('messages.delete') }}" role="button"
                                                     :disabled="loading" :key="delete_button_key"
-                                                    @click.once="triggerDelete('{{ route('settings.roles.destroy', ['role' => $model->id]) }}')">
+                                                    @click.once="triggerDelete('{{ route('roles.destroy', ['role' => $model->id]) }}')">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
                                         </span>

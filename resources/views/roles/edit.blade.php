@@ -2,7 +2,7 @@
 
 @section('title', __('messages.edit_role'))
 
-@section('breadcrumbs', Breadcrumbs::render('settings.roles.edit', $model))
+@section('breadcrumbs', Breadcrumbs::render('roles.edit', $model))
 
 @section('content')
     <div v-cloak id="app" class="row">

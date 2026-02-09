@@ -69,7 +69,7 @@ return [
     |
     */
 
-    'timezone' => 'Asia/Kuala_Lumpur',
+    'timezone' => 'Asia/Jakarta',
 
     /*
     |--------------------------------------------------------------------------
@@ -213,5 +213,6 @@ return [
     'available_locales' => [
         'English' => 'en',
         'Malay' => 'ms',
+        'Indonesia' => 'id'
     ],
 ];

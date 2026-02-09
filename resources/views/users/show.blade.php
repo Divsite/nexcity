@@ -48,7 +48,7 @@
                 <div class="card-body">
                     <div class="text-center">
                         <div class="profile-user position-relative d-inline-block">
-                            <img src="{{ asset(\App\Models\Users\User::AVATAR_PATH . $model->avatar) }}" alt=""
+                            <img src="{{ asset('storage/' . \App\Models\Users\User::AVATAR_PATH . $model->avatar) }}" alt=""
                                  class="avatar-xl rounded-circle user-profile-image img-thumbnail shadow">
                         </div>
                         <h5 class="mt-3 mb-1">{{ $model->name }}</h5>

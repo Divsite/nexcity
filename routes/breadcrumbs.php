@@ -62,48 +62,60 @@ Breadcrumbs::for('settings', function (BreadcrumbTrail $trail) {
     $trail->push(__('messages.settings'));
 });
 
-// Dashboard > Settings > Roles
-Breadcrumbs::for('settings.roles.index', function (BreadcrumbTrail $trail) {
-    $trail->parent('settings');
-    $trail->push(__('messages.roles'), route('settings.roles.index'));
+// Dashboard > Master Data
+Breadcrumbs::for('master-data.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(__('messages.data_master'), route('master-data.index'));
 });
 
-// Dashboard > Settings > Roles > Create Role
-Breadcrumbs::for('settings.roles.create', function (BreadcrumbTrail $trail) {
-    $trail->parent('settings.roles.index');
-    $trail->push(__('messages.create_role'), route('settings.roles.create'));
+// Dashboard > User Roles
+Breadcrumbs::for('roles.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(__('messages.roles'), route('roles.index'));
 });
 
-// Dashboard > Settings > Roles > [Roles Name]
-Breadcrumbs::for('settings.roles.show', function (BreadcrumbTrail $trail, $model) {
-    $trail->parent('settings.roles.index');
-    $trail->push($model->display_name, route('settings.roles.show', $model->id));
+// Dashboard > User Roles > Create Role
+Breadcrumbs::for('roles.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('roles.index');
+    $trail->push(__('messages.create_role'), route('roles.create'));
 });
 
-// Dashboard > Settings > Roles > [Roles Name] > Edit Role
-Breadcrumbs::for('settings.roles.edit', function (BreadcrumbTrail $trail, $model) {
-    $trail->parent('settings.roles.index');
-    $trail->push($model->display_name, route('settings.roles.show', $model->id));
-    $trail->push(__('messages.edit_role'), route('settings.roles.edit', ['role' => $model->id]));
+// Dashboard > User Roles > [Roles Name]
+Breadcrumbs::for('roles.show', function (BreadcrumbTrail $trail, $model) {
+    $trail->parent('roles.index');
+    $trail->push($model->display_name, route('roles.show', $model->id));
 });
 
-// Dashboard > Settings > Permissions
-Breadcrumbs::for('settings.permissions.index', function (BreadcrumbTrail $trail) {
-    $trail->parent('settings');
-    $trail->push(__('messages.permissions'), route('settings.permissions.index'));
+// Dashboard > User Roles > [Roles Name] > Edit Role
+Breadcrumbs::for('roles.edit', function (BreadcrumbTrail $trail, $model) {
+    $trail->parent('roles.index');
+    $trail->push($model->display_name, route('roles.show', $model->id));
+    $trail->push(__('messages.edit_role'), route('roles.edit', ['role' => $model->id]));
 });
 
-// Dashboard > Settings > Permissions > [Permissions Name]
-Breadcrumbs::for('settings.permissions.show', function (BreadcrumbTrail $trail, $model) {
-    $trail->parent('settings.permissions.index');
-    $trail->push($model->display_name, route('settings.permissions.show', $model->id));
+// Dashboard > User Permissions
+Breadcrumbs::for('permissions.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(__('messages.permissions'), route('permissions.index'));
 });
 
-// Dashboard > Settings > Permissions > [Permissions Name] > Edit Permission
-Breadcrumbs::for('settings.permissions.edit', function (BreadcrumbTrail $trail, $model) {
-    $trail->parent('settings.permissions.index');
-    $trail->push($model->display_name, route('settings.permissions.show', $model->id));
-    $trail->push(__('messages.edit_permission'), route('settings.permissions.edit', ['permission' => $model->id]));
+// Dashboard > User Permissions > [Permissions Name]
+Breadcrumbs::for('permissions.show', function (BreadcrumbTrail $trail, $model) {
+    $trail->parent('permissions.index');
+    $trail->push($model->display_name, route('permissions.show', $model->id));
+});
+
+// Dashboard > User Permissions > [Permissions Name] > Edit Permission
+Breadcrumbs::for('permissions.edit', function (BreadcrumbTrail $trail, $model) {
+    $trail->parent('permissions.index');
+    $trail->push($model->display_name, route('permissions.show', $model->id));
+    $trail->push(__('messages.edit_permission'), route('permissions.edit', ['permission' => $model->id]));
+});
+
+// Dashboard > User Menus
+Breadcrumbs::for('menus.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(__('messages.user_menus'), route('menus.index'));
 });
 
 // Dashboard > Settings > All User Activities

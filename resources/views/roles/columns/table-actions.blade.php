@@ -5,14 +5,14 @@
     <ul class="dropdown-menu dropdown-menu-end">
         @can('read-roles')
             <li>
-                <a href="{{ route('settings.roles.show', $row->id) }}" class="dropdown-item">
+                <a href="{{ route('roles.show', $row->id) }}" class="dropdown-item">
                     <i class="ri-eye-fill align-bottom me-2 text-muted"></i> {{ __('messages.view') }}
                 </a>
             </li>
         @endcan
         @can('edit-roles')
             <li>
-                <a href="{{ route('settings.roles.edit', ['role' => $row->id]) }}" class="dropdown-item edit-item-btn">
+                <a href="{{ route('roles.edit', ['role' => $row->id]) }}" class="dropdown-item edit-item-btn">
                     <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> {{ __('messages.edit') }}
                 </a>
             </li>

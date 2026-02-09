@@ -7,6 +7,7 @@ use App\Models\Permissions\Permission;
 use Illuminate\Database\Eloquent\Builder;
 use Rappasoft\LaravelLivewireTables\DataTableComponent;
 use Rappasoft\LaravelLivewireTables\Views\Column;
+use Rappasoft\LaravelLivewireTables\Views\Filters\SelectFilter;
 use Rappasoft\LaravelLivewireTables\Views\Filters\TextFilter;
 
 class PermissionTable extends DataTableComponent
@@ -50,6 +51,10 @@ class PermissionTable extends DataTableComponent
             Column::make(__('messages.description'), 'description')
                 ->sortable()
                 ->searchable(),
+            Column::make(__('messages.scope'), 'scope')
+                ->sortable(),
+            Column::make(__('messages.context'), 'context')
+                ->sortable(),
             Column::make(__('messages.actions'))
                 ->label(
                     fn($row, Column $column) => view('permissions.columns.table-actions')->withRow($row)
@@ -62,6 +67,19 @@ class PermissionTable extends DataTableComponent
 
     public function filters(): array
     {
+        $scopeOptions = [
+            '' => __('messages.all'),
+            'global' => __('messages.global'),
+            'partner' => __('messages.partner'),
+        ];
+        $contextOptions = [
+            '' => __('messages.all'),
+            'rt' => 'RT',
+            'mosque' => __('messages.mosque'),
+            'umkm' => __('messages.umkm'),
+            'institution' => __('messages.institution'),
+        ];
+
         return [
             TextFilter::make(__('messages.name'), 'name')
                 ->setWireLive()
@@ -97,6 +115,22 @@ class PermissionTable extends DataTableComponent
                         return false !== stripos($item, $value);
                     });
                     $builder->whereIn('description', $search->keys());
+                }),
+            SelectFilter::make(__('messages.scope'), 'scope')
+                ->setWireLive()
+                ->options($scopeOptions)
+                ->filter(function (Builder $builder, string $value) {
+                    if ($value !== '') {
+                        $builder->where('scope', $value);
+                    }
+                }),
+            SelectFilter::make(__('messages.context'), 'context')
+                ->setWireLive()
+                ->options($contextOptions)
+                ->filter(function (Builder $builder, string $value) {
+                    if ($value !== '') {
+                        $builder->where('context', $value);
+                    }
                 }),
         ];
     }

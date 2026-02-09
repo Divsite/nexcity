@@ -35,7 +35,8 @@
                                     <div class="form-text">{{ __('messages.file_size_maximum_2_mb') }}</div>
                                     <div class="form-text">{{ __('messages.file_extension_png_jpeg_jpg') }}</div>
                                     <span class="invalid-feedback d-block mt-3" role="alert"
-                                          v-if="errors.avatar"><strong>@{{ errors.avatar[0] }}</strong></span>
+                                          v-if="errors.avatar"><strong>@{{ errors.avatar[0] }}</strong>
+                                    </span>
                                 </div>
                             </div>
 
@@ -107,6 +108,25 @@
                                                 @endforeach
                                             </select>
                                             <span class="invalid-feedback" v-if="errors.role"><strong>@{{ errors.role[0] }}</strong></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-12" v-if="showOrganizationSelect">
+                                        <div :class="['mb-3', errors.organization_id ? 'select2-is-invalid' : '']">
+                                            <label for="organization_id" class="form-label">
+                                                {{ __('messages.organization') }} <span class="text-danger">*</span>
+                                            </label>
+                                            <select id="organization_id" class="form-control select2"
+                                                    data-placeholder="{{ __('messages.please_select') }}"
+                                                    v-model="form.organization_id" v-select2>
+                                                <option></option>
+                                                <option v-for="organization in organizationOptions" :value="organization.id" :key="organization.id">
+                                                    @{{ organization.name }}
+                                                </option>
+                                            </select>
+                                            <span class="invalid-feedback d-block" v-if="errors.organization_id">
+                                                <strong>@{{ errors.organization_id[0] }}</strong>
+                                            </span>
                                         </div>
                                     </div>
 
@@ -184,6 +204,9 @@
 @push('scripts')
     <script>
         let default_avatar = '{{ asset('assets/images/users/user-dummy-img.jpg') }}';
+        window.userCreatePayload = {
+            organizationOptionsByRole: @json($organizationOptionsByRole ?? []),
+        };
     </script>
     <!-- vue -->
     @vite('resources/js/views/users/create.js')

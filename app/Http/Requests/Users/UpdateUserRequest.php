@@ -33,7 +33,7 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($this->route('user'))],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->route('user'))],
-            'phone' => ['nullable', 'phone:MY,mobile'],
+            'phone' => ['nullable', 'phone:ID,mobile'],
             'status' => ['required', Rule::in([User::VERIFIED, User::UNVERIFIED])],
             'role' => ['required', Rule::in($roles)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],

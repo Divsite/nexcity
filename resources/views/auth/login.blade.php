@@ -13,7 +13,7 @@
                 <div class="text-center mt-sm-5 mb-4 text-white-50">
                     <div>
                         <a href="{{ url('/') }}" class="d-inline-block auth-logo">
-                            <img src="{{ asset(config('logo.auth')) }}" alt="" height="45">
+                            <img src="{{ asset(config('logo.auth')) }}" alt="" height="200">
                         </a>
                     </div>
                 </div>
@@ -92,7 +92,7 @@
                                 </div>
                             </form>
 
-                            <div class="mt-4 text-center">
+                            {{-- <div class="mt-4 text-center">
                                 <p class="mb-0">
                                     {{ __('messages.dont_have_an_account') }}
                                     <a href="{{ url(config('core.register_link')) }}"
@@ -100,7 +100,7 @@
                                         {{ __('messages.register') }}
                                     </a>
                                 </p>
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
                     <!-- end card body -->

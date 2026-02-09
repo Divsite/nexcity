@@ -56,18 +56,18 @@ class ProfileController extends Controller
         $user->initial_name = $validated['initial_name'];
 
         if ($request->hasFile('avatar')) {
-            Storage::delete(User::AVATAR_PATH . $user->avatar);
+            Storage::disk('public')->delete(User::AVATAR_PATH . $user->avatar);
             $avatar = $request->file('avatar');
             $fileName = $avatar->hashName();
-            $avatar->store(User::AVATAR_PATH);
+            $avatar->storePublicly(User::AVATAR_PATH, 'public');
             $user->avatar = $fileName;
             $user->initial_name = User::AVATAR_NOT_INITIAL_NAME;
         }
 
         if ($user->initial_name == User::AVATAR_INITIAL_NAME) {
-            Storage::delete(User::AVATAR_PATH . $user->avatar);
+            Storage::disk('public')->delete(User::AVATAR_PATH . $user->avatar);
             $fileName = Str::random(30) . '.png';
-            Avatar::create($user->name)->save(storage_path('app/' . User::AVATAR_PATH . $fileName), 100);
+            Avatar::create($user->name)->save(storage_path('app/public/' . User::AVATAR_PATH . $fileName), 100);
             $user->avatar = $fileName;
         }
 

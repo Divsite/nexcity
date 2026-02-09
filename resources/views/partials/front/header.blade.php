@@ -4,9 +4,9 @@
     <div class="container">
         <a class="navbar-brand" href="{{ url('/') }}">
             <img src="{{ asset(app(SystemPreferences::class)->logo_lg) }}" class="card-logo card-logo-dark"
-                 alt="logo dark" height="35">
+                 alt="logo dark" height="100">
             <img src="{{ asset(app(SystemPreferences::class)->logo_lg) }}" class="card-logo card-logo-light"
-                 alt="logo light" height="35">
+                 alt="logo light" height="100">
         </a>
         <button class="navbar-toggler py-0 fs-20 text-body" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"

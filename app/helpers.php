@@ -33,7 +33,7 @@ if (!function_exists('menu_node_active')) {
             }
             return false;
         }
-        
+
         foreach ($node['children'] as $child) {
             if (menu_node_active($child)) return true;
         }
@@ -75,6 +75,10 @@ if ( ! function_exists('menu_manage'))
     {
         $routeName = [
             'users',
+            'roles',
+            'internal-roles',
+            'permissions',
+            'menus',
             'groups',
             'form-types',
         ];

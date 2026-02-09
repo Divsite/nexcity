@@ -134,7 +134,7 @@ class RoleTable extends DataTableComponent
             flash()->error(__('messages.something_went_wrong'));
         }
 
-        return to_route('settings.roles.index');
+        return to_route('roles.index');
     }
 
     public function customView(): string

@@ -31,6 +31,8 @@ return new class extends Migration
             $table->string('display_name');
             $table->string('guard_name'); // For MySQL 8.0 use string('guard_name', 125);
             $table->string('group')->nullable();
+            $table->string('scope')->default('global');
+            $table->string('context')->nullable();
             $table->longText('description')->nullable();
             $table->timestamps();
 

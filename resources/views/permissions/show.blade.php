@@ -2,7 +2,7 @@
 
 @section('title', __('messages.view_permission'))
 
-@section('breadcrumbs', Breadcrumbs::render('settings.permissions.show', $model))
+@section('breadcrumbs', Breadcrumbs::render('permissions.show', $model))
 
 @section('content')
     <div id="app" class="row">

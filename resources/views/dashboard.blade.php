@@ -46,7 +46,7 @@
                             <div>
                                 <h4 class="fs-22 fw-semibold ff-secondary mb-4">
                                     <span class="counter-value" data-target="{{ $total->get('role') }}"></span></h4>
-                                <a href="{{ route('settings.roles.index') }}"
+                                <a href="{{ route('roles.index') }}"
                                    class="text-decoration-underline">{{ __('messages.view_all_role') }}</a>
                             </div>
                             <div class="avatar-sm flex-shrink-0">
@@ -73,7 +73,7 @@
                                 <h4 class="fs-22 fw-semibold ff-secondary mb-4">
                                     <span class="counter-value" data-target="{{ $total->get('permission') }}"></span>
                                 </h4>
-                                <a href="{{ route('settings.permissions.index') }}"
+                                <a href="{{ route('permissions.index') }}"
                                    class="text-decoration-underline">{{ __('messages.view_all_permission') }}</a>
                             </div>
                             <div class="avatar-sm flex-shrink-0">

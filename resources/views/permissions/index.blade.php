@@ -2,7 +2,7 @@
 
 @section('title', __('messages.permissions'))
 
-@section('breadcrumbs', Breadcrumbs::render('settings.permissions.index'))
+@section('breadcrumbs', Breadcrumbs::render('permissions.index'))
 
 @section('content')
     <div id="app" class="row">
