@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('distribution_id')->constrained()->cascadeOnDelete();
             $table->foreignId('resident_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('distribution_class_id')->nullable()->constrained('m_distribution_classes')->nullOnDelete();
+            $table->foreignId('distribution_class_id')->nullable()->constrained('distribution_classes')->nullOnDelete();
             $table->string('status')->default('pending');
             $table->text('status_note')->nullable();
             $table->dateTime('distributed_at')->nullable();

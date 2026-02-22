@@ -2,7 +2,7 @@
 
 namespace App\Models\Distributions;
 
-use App\Models\Masters\DistributionClass;
+use App\Models\DistributionClasses\DistributionClass;
 use App\Models\Users\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

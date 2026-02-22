@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityLogs\ActivityLogController;
 use App\Http\Controllers\AuthenticationLogs\AuthenticationLogController;
+use App\Http\Controllers\Charities\CharityTransactionController;
 use App\Http\Controllers\Dashboards\DashboardController;
 use App\Http\Controllers\Forms\BuilderController;
 use App\Http\Controllers\Forms\FormController;
@@ -208,10 +209,16 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
 
     Route::resource('organizations', OrganizationController::class);
     Route::resource('residents', ResidentController::class)->parameters(['residents' => 'resident']);
+
+    // master data modules
     Route::get('master-data', [MasterDataController::class, 'index'])->name('master-data.index');
 
     Route::prefix('mosque')->name('mosque.')->group(function () {
-        Route::get('charity', ModulePlaceholderController::class)->name('charity')->defaults('slug', 'mosque-charity');
+        // charity modules
+        Route::get('charity-transactions/recap/daily/print', [CharityTransactionController::class, 'dailyRecap'])
+            ->name('charity-transactions.daily-recap.print');
+        Route::resource('charity-transactions', CharityTransactionController::class);
+
         Route::get('qurban', ModulePlaceholderController::class)->name('qurban')->defaults('slug', 'mosque-qurban');
         Route::get('distributions', ModulePlaceholderController::class)->name('distribution')->defaults('slug', 'mosque-distribution');
         Route::get('scan', ModulePlaceholderController::class)->name('scan')->defaults('slug', 'mosque-scan');

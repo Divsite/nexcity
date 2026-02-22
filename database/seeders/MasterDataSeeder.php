@@ -2,18 +2,21 @@
 
 namespace Database\Seeders;
 
+use App\Models\Masters\Bank;
+use App\Models\CharityTypes\CharityType;
+use App\Models\CharityTypeSources\CharityTypeSource;
+use App\Models\DistributionClasses\DistributionClass;
+use App\Models\DistributionClassSources\DistributionClassSource;
+use App\Models\DistributionTypes\DistributionType;
 use App\Models\Masters\Education;
 use App\Models\Masters\EducationMajor;
-use App\Models\Masters\DistributionClass;
-use App\Models\Masters\DistributionType;
 use App\Models\Masters\MaritalStatus;
 use App\Models\Masters\OwnershipStatus;
 use App\Models\Masters\Religion;
 use App\Models\Masters\ResidenceStatus;
 use App\Models\Masters\ResidentStatus;
 use App\Models\Masters\WorkStatus;
-use App\Models\Masters\CharityType;
-use App\Models\Masters\Bank;
+use App\Models\Organizations\Organization;
 use Illuminate\Database\Seeder;
 
 class MasterDataSeeder extends Seeder
@@ -21,11 +24,11 @@ class MasterDataSeeder extends Seeder
     public function run(): void
     {
         $residenceStatuses = [
-            ['name' => 'Milik Sendiri', 'slug' => 'owned', 'sort_order' => 1],
-            ['name' => 'Kontrak', 'slug' => 'rent', 'sort_order' => 2],
-            ['name' => 'Keluarga', 'slug' => 'family', 'sort_order' => 3],
-            ['name' => 'Dinas', 'slug' => 'official', 'sort_order' => 4],
-            ['name' => 'Lainnya', 'slug' => 'other', 'sort_order' => 5],
+            ['name' => 'Milik Sendiri', 'slug' => 'owned'],
+            ['name' => 'Kontrak', 'slug' => 'rent'],
+            ['name' => 'Keluarga', 'slug' => 'family'],
+            ['name' => 'Dinas', 'slug' => 'official'],
+            ['name' => 'Lainnya', 'slug' => 'other'],
         ];
 
         foreach ($residenceStatuses as $item) {
@@ -34,17 +37,16 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $maritalStatuses = [
-            ['name' => 'Belum Menikah', 'slug' => 'single', 'sort_order' => 1],
-            ['name' => 'Menikah', 'slug' => 'married', 'sort_order' => 2],
-            ['name' => 'Cerai Hidup', 'slug' => 'divorced', 'sort_order' => 3],
-            ['name' => 'Cerai Mati', 'slug' => 'widowed', 'sort_order' => 4],
+            ['name' => 'Belum Menikah', 'slug' => 'single'],
+            ['name' => 'Menikah', 'slug' => 'married'],
+            ['name' => 'Cerai Hidup', 'slug' => 'divorced'],
+            ['name' => 'Cerai Mati', 'slug' => 'widowed'],
         ];
 
         foreach ($maritalStatuses as $item) {
@@ -53,23 +55,22 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $educations = [
-            ['name' => 'Tidak Sekolah', 'slug' => 'none', 'sort_order' => 1],
-            ['name' => 'SD / Sederajat', 'slug' => 'sd', 'sort_order' => 2],
-            ['name' => 'SMP / Sederajat', 'slug' => 'smp', 'sort_order' => 3],
-            ['name' => 'SMA / Sederajat', 'slug' => 'sma', 'sort_order' => 4],
-            ['name' => 'D1', 'slug' => 'd1', 'sort_order' => 5],
-            ['name' => 'D2', 'slug' => 'd2', 'sort_order' => 6],
-            ['name' => 'D3', 'slug' => 'd3', 'sort_order' => 7],
-            ['name' => 'S1', 'slug' => 's1', 'sort_order' => 8],
-            ['name' => 'S2', 'slug' => 's2', 'sort_order' => 9],
-            ['name' => 'S3', 'slug' => 's3', 'sort_order' => 10],
+            ['name' => 'Tidak Sekolah', 'slug' => 'none'],
+            ['name' => 'SD / Sederajat', 'slug' => 'sd'],
+            ['name' => 'SMP / Sederajat', 'slug' => 'smp'],
+            ['name' => 'SMA / Sederajat', 'slug' => 'sma'],
+            ['name' => 'D1', 'slug' => 'd1'],
+            ['name' => 'D2', 'slug' => 'd2'],
+            ['name' => 'D3', 'slug' => 'd3'],
+            ['name' => 'S1', 'slug' => 's1'],
+            ['name' => 'S2', 'slug' => 's2'],
+            ['name' => 'S3', 'slug' => 's3'],
         ];
 
         $educationMap = [];
@@ -79,7 +80,6 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
@@ -87,14 +87,14 @@ class MasterDataSeeder extends Seeder
         }
 
         $majors = [
-            ['name' => 'Umum', 'slug' => 'general', 'education_slug' => 'sma', 'sort_order' => 1],
-            ['name' => 'IPA', 'slug' => 'ipa', 'education_slug' => 'sma', 'sort_order' => 2],
-            ['name' => 'IPS', 'slug' => 'ips', 'education_slug' => 'sma', 'sort_order' => 3],
-            ['name' => 'TKJ', 'slug' => 'tkj', 'education_slug' => 'sma', 'sort_order' => 4],
-            ['name' => 'Akuntansi', 'slug' => 'accounting', 'education_slug' => 'd3', 'sort_order' => 5],
-            ['name' => 'Manajemen', 'slug' => 'management', 'education_slug' => 's1', 'sort_order' => 6],
-            ['name' => 'Teknik Informatika', 'slug' => 'informatics', 'education_slug' => 's1', 'sort_order' => 7],
-            ['name' => 'Pendidikan', 'slug' => 'education', 'education_slug' => 's1', 'sort_order' => 8],
+            ['name' => 'Umum', 'slug' => 'general', 'education_slug' => 'sma'],
+            ['name' => 'IPA', 'slug' => 'ipa', 'education_slug' => 'sma'],
+            ['name' => 'IPS', 'slug' => 'ips', 'education_slug' => 'sma'],
+            ['name' => 'TKJ', 'slug' => 'tkj', 'education_slug' => 'sma'],
+            ['name' => 'Akuntansi', 'slug' => 'accounting', 'education_slug' => 'd3'],
+            ['name' => 'Manajemen', 'slug' => 'management', 'education_slug' => 's1'],
+            ['name' => 'Teknik Informatika', 'slug' => 'informatics', 'education_slug' => 's1'],
+            ['name' => 'Pendidikan', 'slug' => 'education', 'education_slug' => 's1'],
         ];
 
         foreach ($majors as $item) {
@@ -106,19 +106,18 @@ class MasterDataSeeder extends Seeder
                     'education_id' => $education?->id,
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $religions = [
-            ['name' => 'Islam', 'slug' => 'islam', 'sort_order' => 1],
-            ['name' => 'Kristen', 'slug' => 'christian', 'sort_order' => 2],
-            ['name' => 'Katolik', 'slug' => 'catholic', 'sort_order' => 3],
-            ['name' => 'Hindu', 'slug' => 'hindu', 'sort_order' => 4],
-            ['name' => 'Buddha', 'slug' => 'buddha', 'sort_order' => 5],
-            ['name' => 'Konghucu', 'slug' => 'confucian', 'sort_order' => 6],
+            ['name' => 'Islam', 'slug' => 'islam'],
+            ['name' => 'Kristen', 'slug' => 'christian'],
+            ['name' => 'Katolik', 'slug' => 'catholic'],
+            ['name' => 'Hindu', 'slug' => 'hindu'],
+            ['name' => 'Buddha', 'slug' => 'buddha'],
+            ['name' => 'Konghucu', 'slug' => 'confucian'],
         ];
 
         foreach ($religions as $item) {
@@ -127,18 +126,17 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $ownershipStatuses = [
-            ['name' => 'Wakaf', 'slug' => 'wakaf', 'sort_order' => 1],
-            ['name' => 'Hak Milik', 'slug' => 'owned', 'sort_order' => 2],
-            ['name' => 'Sewa', 'slug' => 'rent', 'sort_order' => 3],
-            ['name' => 'Pinjam Pakai', 'slug' => 'borrowed', 'sort_order' => 4],
-            ['name' => 'Lainnya', 'slug' => 'other', 'sort_order' => 5],
+            ['name' => 'Wakaf', 'slug' => 'wakaf'],
+            ['name' => 'Hak Milik', 'slug' => 'owned'],
+            ['name' => 'Sewa', 'slug' => 'rent'],
+            ['name' => 'Pinjam Pakai', 'slug' => 'borrowed'],
+            ['name' => 'Lainnya', 'slug' => 'other'],
         ];
 
         foreach ($ownershipStatuses as $item) {
@@ -147,19 +145,18 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $workStatuses = [
-            ['name' => 'Bekerja', 'slug' => 'working', 'sort_order' => 1],
-            ['name' => 'Tidak Bekerja', 'slug' => 'not-working', 'sort_order' => 2],
-            ['name' => 'Pelajar / Mahasiswa', 'slug' => 'student', 'sort_order' => 3],
-            ['name' => 'Wiraswasta', 'slug' => 'entrepreneur', 'sort_order' => 4],
-            ['name' => 'Pensiun', 'slug' => 'retired', 'sort_order' => 5],
-            ['name' => 'Ibu Rumah Tangga', 'slug' => 'housewife', 'sort_order' => 6],
+            ['name' => 'Bekerja', 'slug' => 'working'],
+            ['name' => 'Tidak Bekerja', 'slug' => 'not-working'],
+            ['name' => 'Pelajar / Mahasiswa', 'slug' => 'student'],
+            ['name' => 'Wiraswasta', 'slug' => 'entrepreneur'],
+            ['name' => 'Pensiun', 'slug' => 'retired'],
+            ['name' => 'Ibu Rumah Tangga', 'slug' => 'housewife'],
         ];
 
         foreach ($workStatuses as $item) {
@@ -168,17 +165,16 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $residentStatuses = [
-            ['name' => 'Warga Tetap', 'slug' => 'permanent', 'sort_order' => 1],
-            ['name' => 'Warga Sementara', 'slug' => 'temporary', 'sort_order' => 2],
-            ['name' => 'Pendatang', 'slug' => 'migrant', 'sort_order' => 3],
-            ['name' => 'Warga Asli', 'slug' => 'native', 'sort_order' => 4],
+            ['name' => 'Warga Tetap', 'slug' => 'permanent'],
+            ['name' => 'Warga Sementara', 'slug' => 'temporary'],
+            ['name' => 'Pendatang', 'slug' => 'migrant'],
+            ['name' => 'Warga Asli', 'slug' => 'native'],
         ];
 
         foreach ($residentStatuses as $item) {
@@ -187,15 +183,14 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
         $distributionTypes = [
-            ['name' => 'Zakat', 'slug' => 'zakat', 'sort_order' => 1],
-            ['name' => 'Qurban', 'slug' => 'qurban', 'sort_order' => 2],
+            ['name' => 'Zakat', 'slug' => 'zakat'],
+            ['name' => 'Qurban', 'slug' => 'qurban'],
         ];
 
         foreach ($distributionTypes as $item) {
@@ -204,127 +199,148 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $item['name'],
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $distributionClassSources = [
+            ['name' => 'Amil', 'slug' => 'amil'],
+            ['name' => 'Fakir Miskin', 'slug' => 'fakir-miskin'],
+            ['name' => 'Yatim/Piatu', 'slug' => 'yatim-piatu'],
+        ];
+
+        foreach ($distributionClassSources as $item) {
+            DistributionClassSource::updateOrCreate(
+                ['slug' => $item['slug']],
+                [
+                    'name' => $item['name'],
+                    'description' => $item['description'] ?? null,
                     'is_active' => true,
                 ]
             );
         }
 
         $distributionClasses = [
-            ['name' => 'Amil 1', 'slug' => 'amil-1', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1, 'sort_order' => 1],
-            ['name' => 'Amil 2', 'slug' => 'amil-2', 'year' => 2026, 'get_money' => 200000, 'get_rice' => 2, 'sort_order' => 2],
-            ['name' => 'Amil 3', 'slug' => 'amil-3', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1, 'sort_order' => 3],
-            ['name' => 'Fakir Miskin Gol 1', 'slug' => 'fakir-miskin-1', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1, 'sort_order' => 4],
-            ['name' => 'Fakir Miskin Gol 2', 'slug' => 'fakir-miskin-2', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1, 'sort_order' => 5],
-            ['name' => 'Yatim/Piatu', 'slug' => 'yatim-piatu', 'year' => 2026, 'get_money' => 50000, 'get_rice' => 1, 'sort_order' => 6],
+            ['source' => 'amil', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1],
+            ['source' => 'fakir-miskin', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1],
+            ['source' => 'yatim-piatu', 'year' => 2026, 'get_money' => 50000, 'get_rice' => 1],
         ];
 
+        $organizations = Organization::query()
+            ->whereIn('slug', ['islamic-center-alamanah', 'darul-muminin'])
+            ->get()
+            ->keyBy('slug');
+
+        $sourceMap = DistributionClassSource::query()
+            ->whereIn('slug', collect($distributionClassSources)->pluck('slug'))
+            ->get()
+            ->keyBy('slug');
+
         foreach ($distributionClasses as $item) {
-            DistributionClass::updateOrCreate(
-                ['slug' => $item['slug'], 'year' => $item['year']],
+            $source = $sourceMap->get($item['source']);
+            if (! $source) {
+                continue;
+            }
+
+            foreach ($organizations as $organization) {
+                DistributionClass::updateOrCreate(
+                    [
+                        'organization_id' => $organization->id,
+                        'distribution_class_source_id' => $source->id,
+                        'year' => $item['year'],
+                    ],
+                    [
+                        'get_money' => $item['get_money'] ?? null,
+                        'get_rice' => $item['get_rice'] ?? null,
+                        'description' => $item['description'] ?? null,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
+        $charityTypeSources = [
+            ['name' => 'Zakat Fitrah', 'slug' => 'zakat-fitrah'],
+            ['name' => 'Zakat Mal', 'slug' => 'zakat-mal'],
+            ['name' => 'Fidyah', 'slug' => 'fidyah'],
+            ['name' => 'Infaq', 'slug' => 'infaq'],
+            ['name' => 'Sedekah', 'slug' => 'sedekah'],
+            ['name' => 'Waqf', 'slug' => 'waqf'],
+        ];
+
+        foreach ($charityTypeSources as $item) {
+            CharityTypeSource::updateOrCreate(
+                ['slug' => $item['slug']],
                 [
                     'name' => $item['name'],
-                    'get_money' => $item['get_money'] ?? null,
-                    'get_rice' => $item['get_rice'] ?? null,
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );
         }
 
-        $charityTypes = [
-            [
-                'name' => 'Zakat Fitrah',
-                'slug' => 'zakat-fitrah',
-                'year' => 2026,
-                'min_amount' => 40000,
-                'max_amount' => 50000,
-                'is_rice' => false,
-                'total_rice' => 35,
-                'package_amount' => 32000,
-                'sort_order' => 1,
+        $sourceMap = CharityTypeSource::query()
+            ->whereIn('slug', collect($charityTypeSources)->pluck('slug'))
+            ->get()
+            ->keyBy('slug');
+
+        $charitySettings2026 = [
+            'islamic-center-alamanah' => [
+                ['source' => 'zakat-fitrah', 'min_amount' => 40000, 'max_amount' => 50000, 'is_rice' => true, 'total_rice' => 2.0, 'package_amount' => 32000],
+                ['source' => 'fidyah', 'min_amount' => 40000, 'max_amount' => 60000, 'is_rice' => true, 'total_rice' => 2.5],
+                ['source' => 'zakat-mal'],
+                ['source' => 'infaq'],
+                ['source' => 'sedekah'],
+                ['source' => 'waqf'],
             ],
-            [
-                'name' => 'Fidyah',
-                'slug' => 'fidyah',
-                'year' => 2026,
-                'min_amount' => 40000,
-                'max_amount' => 60000,
-                'is_rice' => false,
-                'total_rice' => 25,
-                'package_amount' => null,
-                'sort_order' => 2,
-            ],
-            [
-                'name' => 'Infaq',
-                'slug' => 'infaq',
-                'year' => 2026,
-                'min_amount' => null,
-                'max_amount' => null,
-                'is_rice' => false,
-                'total_rice' => null,
-                'package_amount' => null,
-                'sort_order' => 3,
-            ],
-            [
-                'name' => 'Sodaqoh',
-                'slug' => 'sodaqoh',
-                'year' => 2026,
-                'min_amount' => null,
-                'max_amount' => null,
-                'is_rice' => false,
-                'total_rice' => null,
-                'package_amount' => null,
-                'sort_order' => 4,
-            ],
-            [
-                'name' => 'Zakat Mal',
-                'slug' => 'zakat-mal',
-                'year' => 2026,
-                'min_amount' => null,
-                'max_amount' => null,
-                'is_rice' => false,
-                'total_rice' => null,
-                'package_amount' => null,
-                'sort_order' => 5,
-            ],
-            [
-                'name' => 'Waqaf',
-                'slug' => 'waqaf',
-                'year' => 2026,
-                'min_amount' => null,
-                'max_amount' => null,
-                'is_rice' => false,
-                'total_rice' => null,
-                'package_amount' => null,
-                'sort_order' => 6,
+            'darul-muminin' => [
+                ['source' => 'zakat-fitrah', 'min_amount' => 45000, 'max_amount' => 55000, 'is_rice' => true, 'total_rice' => 2.5, 'package_amount' => 35000],
+                ['source' => 'fidyah', 'min_amount' => 45000, 'max_amount' => 65000, 'is_rice' => true, 'total_rice' => 2.0],
+                ['source' => 'zakat-mal'],
+                ['source' => 'infaq'],
+                ['source' => 'sedekah'],
+                ['source' => 'waqf'],
             ],
         ];
 
-        foreach ($charityTypes as $item) {
-            CharityType::updateOrCreate(
-                ['slug' => $item['slug'], 'year' => $item['year']],
-                [
-                    'name' => $item['name'],
-                    'min_amount' => $item['min_amount'],
-                    'max_amount' => $item['max_amount'],
-                    'is_rice' => $item['is_rice'],
-                    'total_rice' => $item['total_rice'],
-                    'package_amount' => $item['package_amount'],
-                    'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
-                    'is_active' => true,
-                ]
-            );
+        foreach ($charitySettings2026 as $orgSlug => $settings) {
+            $organization = $organizations->get($orgSlug);
+            if (! $organization) {
+                continue;
+            }
+
+            foreach ($settings as $item) {
+                $source = $sourceMap->get($item['source']);
+                if (! $source) {
+                    continue;
+                }
+
+                CharityType::updateOrCreate(
+                    [
+                        'organization_id' => $organization->id,
+                        'charity_type_source_id' => $source->id,
+                        'year' => 2026,
+                    ],
+                    [
+                        'min_amount' => $item['min_amount'] ?? null,
+                        'max_amount' => $item['max_amount'] ?? null,
+                        'is_rice' => $item['is_rice'] ?? false,
+                        'total_rice' => $item['total_rice'] ?? null,
+                        'package_amount' => $item['package_amount'] ?? null,
+                        'description' => $item['description'] ?? null,
+                        'is_active' => true,
+                    ]
+                );
+            }
         }
 
         $banks = [
-            ['name' => 'Bank BCA', 'slug' => 'bca', 'code' => '014', 'sort_order' => 1],
-            ['name' => 'Bank BRI', 'slug' => 'bri', 'code' => '002', 'sort_order' => 2],
-            ['name' => 'Bank BNI', 'slug' => 'bni', 'code' => '009', 'sort_order' => 3],
-            ['name' => 'Bank Mandiri', 'slug' => 'mandiri', 'code' => '008', 'sort_order' => 4],
-            ['name' => 'Bank Syariah Indonesia', 'slug' => 'bsi', 'code' => '451', 'sort_order' => 5],
+            ['name' => 'Bank BCA', 'slug' => 'bca', 'code' => '014'],
+            ['name' => 'Bank BRI', 'slug' => 'bri', 'code' => '002'],
+            ['name' => 'Bank BNI', 'slug' => 'bni', 'code' => '009'],
+            ['name' => 'Bank Mandiri', 'slug' => 'mandiri', 'code' => '008'],
+            ['name' => 'Bank Syariah Indonesia', 'slug' => 'bsi', 'code' => '451'],
         ];
 
         foreach ($banks as $item) {
@@ -334,7 +350,6 @@ class MasterDataSeeder extends Seeder
                     'name' => $item['name'],
                     'code' => $item['code'] ?? null,
                     'description' => $item['description'] ?? null,
-                    'sort_order' => $item['sort_order'] ?? 0,
                     'is_active' => true,
                 ]
             );

@@ -20,6 +20,9 @@ return [
         ],
         'items' => [
             'charity' => 'Amal',
+            'charity_types' => 'Jenis Amal',
+            'charity_type_sources' => 'Sumber Jenis Amal',
+            'charity_payments' => 'Pembayaran Amal',
             'qurban' => 'Qurban',
             'distribution' => 'Distribusi',
             'scan' => 'Pindai Barcode',
@@ -28,7 +31,6 @@ return [
             'charity_report' => 'Laporan Amal',
             'distribution_report' => 'Laporan Distribusi',
             'beneficiary_groups' => 'Golongan Penerima',
-            'charity_types' => 'Jenis Amal',
         ],
     ],
     'rt' => [
@@ -58,7 +60,7 @@ return [
             'dues' => 'Iuran',
             'information' => 'Informasi',
             'complaints' => 'Keluhan',
-            'events' => 'Event',
+            'events' => 'Acara',
         ],
     ],
 ];

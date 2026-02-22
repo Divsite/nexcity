@@ -36,11 +36,14 @@ class MasterDataController extends Controller
             ['key' => 'work-statuses', 'label' => __('messages.work_status'), 'icon' => 'ri-briefcase-4-line', 'roles' => ['superadmin']],
             ['key' => 'resident-statuses', 'label' => __('messages.resident_status'), 'icon' => 'ri-user-location-line', 'roles' => ['superadmin']],
             ['key' => 'banks', 'label' => __('messages.banks'), 'icon' => 'ri-bank-line', 'roles' => ['superadmin']],
+            ['key' => 'distribution-types', 'label' => __('messages.distribution_types'), 'icon' => 'ri-hand-heart-line', 'roles' => ['superadmin']],
+            ['key' => 'distribution-class-sources', 'label' => __('messages.distribution_class_sources'), 'icon' => 'ri-book-mark-line', 'roles' => ['superadmin']],
+            ['key' => 'charity-type-sources', 'label' => __('messages.charity_type_sources'), 'icon' => 'ri-book-mark-line', 'roles' => ['superadmin']],
 
             // MASJID ROLE ACCESS
-            ['key' => 'distribution-types', 'label' => __('messages.distribution_types'), 'icon' => 'ri-hand-heart-line', 'roles' => ['superadmin', 'mosque_admin']],
-            ['key' => 'distribution-classes', 'label' => __('messages.distribution_classes'), 'icon' => 'ri-layout-grid-line', 'roles' => ['superadmin', 'mosque_admin']],
-            ['key' => 'charity-types', 'label' => __('messages.charity_types'), 'icon' => 'ri-hand-coin-line', 'roles' => ['superadmin', 'mosque_admin']],
+            ['key' => 'distribution-classes', 'label' => __('messages.distribution_classes'), 'icon' => 'ri-layout-grid-line', 'roles' => ['mosque_admin']],
+            ['key' => 'charity-types', 'label' => __('messages.charity_types'), 'icon' => 'ri-hand-coin-line', 'roles' => ['mosque_admin']],
+            ['key' => 'charity-payments', 'label' => __('messages.charity_payments'), 'icon' => 'ri-bank-card-2-line', 'roles' => ['mosque_admin']],
         ];
 
         // only admin access
@@ -63,11 +66,7 @@ class MasterDataController extends Controller
             $masterItems = [];
         } else {
             $masterItems = collect($masterItems)
-                ->filter(function (array $item) use ($isSuperadmin, $userRoles) {
-                    if ($isSuperadmin) {
-                        return true;
-                    }
-
+                ->filter(function (array $item) use ($userRoles) {
                     $allowedRoles = $item['roles'] ?? [];
 
                     return count(array_intersect($allowedRoles, $userRoles)) > 0;

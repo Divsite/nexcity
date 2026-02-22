@@ -14,7 +14,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -24,7 +23,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -34,7 +32,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -45,7 +42,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -55,7 +51,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -65,7 +60,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -75,7 +69,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -85,7 +78,6 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
@@ -95,41 +87,16 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
 
-        Schema::create('m_distribution_classes', function (Blueprint $table) {
+        Schema::create('m_distribution_class_sources', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('slug');
-            $table->unsignedSmallInteger('year')->nullable();
-            $table->decimal('get_money', 18, 2)->nullable();
-            $table->decimal('get_rice', 10, 2)->nullable();
+            $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
-
-            $table->unique(['slug', 'year']);
-        });
-
-        Schema::create('m_charity_types', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('slug');
-            $table->unsignedSmallInteger('year')->nullable();
-            $table->decimal('min_amount', 18, 2)->nullable();
-            $table->decimal('max_amount', 18, 2)->nullable();
-            $table->boolean('is_rice')->default(false);
-            $table->decimal('total_rice', 10, 2)->nullable();
-            $table->decimal('package_amount', 18, 2)->nullable();
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
-            $table->timestamps();
-
-            $table->unique(['slug', 'year']);
         });
 
         Schema::create('m_banks', function (Blueprint $table) {
@@ -139,7 +106,15 @@ return new class extends Migration
             $table->string('code', 20)->nullable();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('sort_order')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('m_charity_type_sources', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }
@@ -147,8 +122,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('m_banks');
-        Schema::dropIfExists('m_charity_types');
-        Schema::dropIfExists('m_distribution_classes');
+        Schema::dropIfExists('m_charity_type_sources');
+        Schema::dropIfExists('m_distribution_class_sources');
         Schema::dropIfExists('m_distribution_types');
         Schema::dropIfExists('m_resident_statuses');
         Schema::dropIfExists('m_work_statuses');

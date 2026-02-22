@@ -262,7 +262,10 @@ class OrganizationSeeder extends Seeder
 
         $mosqueLevelPermissions = [
             'mosque-superadmin' => [
-                'browse-zakat', 'read-zakat', 'edit-zakat', 'add-zakat', 'delete-zakat',
+                'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions', 'delete-mosque-charity-transactions',
+                'browse-mosque-charity-types', 'read-mosque-charity-types', 'edit-mosque-charity-types', 'add-mosque-charity-types', 'delete-mosque-charity-types',
+                'browse-mosque-charity-type-sources', 'read-mosque-charity-type-sources', 'edit-mosque-charity-type-sources', 'add-mosque-charity-type-sources', 'delete-mosque-charity-type-sources',
+                'browse-mosque-charity-payments', 'read-mosque-charity-payments', 'edit-mosque-charity-payments', 'add-mosque-charity-payments', 'delete-mosque-charity-payments',
                 'browse-qurban', 'read-qurban', 'edit-qurban', 'add-qurban', 'delete-qurban',
                 'browse-mosque-distributions', 'read-mosque-distributions', 'edit-mosque-distributions', 'add-mosque-distributions', 'delete-mosque-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
@@ -271,16 +274,18 @@ class OrganizationSeeder extends Seeder
                 'scan-qurban-coupon', 'scan-zakat-coupon',
             ],
             'mosque-secretary' => [
-                'browse-zakat', 'read-zakat',
+                'browse-mosque-charity-transactions', 'read-mosque-charity-transactions',
                 'browse-mosque-distributions', 'read-mosque-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
             ],
             'mosque-finance' => [
-                'browse-zakat', 'read-zakat', 'edit-zakat', 'add-zakat',
+                'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions',
+                'browse-mosque-charity-payments', 'read-mosque-charity-payments',
                 'browse-mosque-distributions', 'read-mosque-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
             ],
             'mosque-officer' => [
+                'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions',
                 'browse-qurban', 'read-qurban',
                 'browse-mosque-distributions', 'read-mosque-distributions',
                 'scan-qurban-coupon', 'scan-zakat-coupon',

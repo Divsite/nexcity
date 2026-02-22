@@ -54,29 +54,21 @@ class UserMenuSeeder extends Seeder
     protected function mosqueMenus(): array
     {
         return [
-            $this->placeholderMenu(
+            $this->menuItem(
                 context: 'mosque',
                 section: 'menu.mosque.sections.features',
                 label: 'menu.mosque.items.charity',
                 icon: 'ri-heart-2-line',
-                slug: 'mosque-charity',
+                routeName: 'mosque.charity-transactions.index',
                 order: 20,
                 rules: [
                     'organization_types' => ['mosque'],
-                    'permissions' => ['browse-zakat'],
+                    'permissions' => ['browse-mosque-charity-transactions'],
                 ]
             ),
             $this->placeholderMenu('mosque', 'menu.mosque.sections.features', 'menu.mosque.items.qurban', 'ri-government-line', 'mosque-qurban', 30, [
                 'organization_types' => ['mosque'],
                 'permissions' => ['browse-qurban'],
-            ]),
-            $this->placeholderMenu('mosque', 'menu.mosque.sections.features', 'menu.mosque.items.distribution', 'ri-hand-coin-line', 'mosque-distribution', 40, [
-                'organization_types' => ['mosque'],
-                'permissions' => ['browse-mosque-distributions'],
-            ]),
-            $this->placeholderMenu('mosque', 'menu.mosque.sections.features', 'menu.mosque.items.scan', 'ri-qr-code-line', 'mosque-scan', 50, [
-                'organization_types' => ['mosque'],
-                'permissions' => ['scan-qurban-coupon', 'scan-zakat-coupon'],
             ]),
             $this->placeholderMenu('mosque', 'menu.mosque.sections.features', 'menu.mosque.items.inventory', 'ri-archive-drawer-line', 'mosque-inventory', 60, [
                 'organization_types' => ['mosque'],
@@ -164,6 +156,27 @@ class UserMenuSeeder extends Seeder
     ): array {
         $routeName = str_replace('-', '.', $slug);
 
+        return [
+            'context' => $context,
+            'section' => $section,
+            'label' => $label,
+            'icon' => $icon,
+            'route_name' => $routeName,
+            'order' => $order,
+            'visibility_rules' => $rules,
+            'is_active' => true,
+        ];
+    }
+
+    protected function menuItem(
+        string $context,
+        ?string $section,
+        string $label,
+        string $icon,
+        string $routeName,
+        int $order,
+        array $rules = []
+    ): array {
         return [
             'context' => $context,
             'section' => $section,

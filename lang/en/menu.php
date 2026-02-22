@@ -20,6 +20,9 @@ return [
         ],
         'items' => [
             'charity' => 'Charity',
+            'charity_types' => 'Charity Types',
+            'charity_type_sources' => 'Charity Type Sources',
+            'charity_payments' => 'Charity Payments',
             'qurban' => 'Qurban',
             'distribution' => 'Distribution',
             'scan' => 'Scan Barcode',
@@ -28,7 +31,6 @@ return [
             'charity_report' => 'Charity Reports',
             'distribution_report' => 'Distribution Reports',
             'beneficiary_groups' => 'Beneficiary Groups',
-            'charity_types' => 'Charity Types',
         ],
     ],
     'rt' => [

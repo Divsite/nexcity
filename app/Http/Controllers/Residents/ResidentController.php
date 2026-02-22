@@ -228,13 +228,13 @@ class ResidentController extends Controller
                 'organizations' => Organization::select('id', 'name', 'type')
                     ->orderBy('name')
                     ->get(),
-                'residence_statuses' => ResidenceStatus::select('id', 'name')->orderBy('sort_order')->get(),
-                'marital_statuses' => MaritalStatus::select('id', 'name')->orderBy('sort_order')->get(),
-                'educations' => Education::select('id', 'name')->orderBy('sort_order')->get(),
+                'residence_statuses' => ResidenceStatus::select('id', 'name')->orderBy('name')->get(),
+                'marital_statuses' => MaritalStatus::select('id', 'name')->orderBy('name')->get(),
+                'educations' => Education::select('id', 'name')->orderBy('name')->get(),
                 'education_majors' => EducationMajor::select('id', 'name', 'education_id')
-                    ->orderBy('sort_order')
+                    ->orderBy('name')
                     ->get(),
-                'religions' => Religion::select('id', 'name')->orderBy('sort_order')->get(),
+                'religions' => Religion::select('id', 'name')->orderBy('name')->get(),
                 'genders' => [
                     ['value' => 'male', 'label' => __('messages.male')],
                     ['value' => 'female', 'label' => __('messages.female')],
@@ -364,11 +364,11 @@ class ResidentController extends Controller
 
     protected function defaultMasterIds(): array
     {
-        $residenceStatusId = ResidenceStatus::query()->orderBy('sort_order')->value('id');
-        $maritalStatusId = MaritalStatus::query()->orderBy('sort_order')->value('id');
-        $educationId = Education::query()->orderBy('sort_order')->value('id');
-        $educationMajorId = EducationMajor::query()->orderBy('sort_order')->value('id');
-        $religionId = Religion::query()->orderBy('sort_order')->value('id');
+        $residenceStatusId = ResidenceStatus::query()->orderBy('name')->value('id');
+        $maritalStatusId = MaritalStatus::query()->orderBy('name')->value('id');
+        $educationId = Education::query()->orderBy('name')->value('id');
+        $educationMajorId = EducationMajor::query()->orderBy('name')->value('id');
+        $religionId = Religion::query()->orderBy('name')->value('id');
 
         return [
             'residence_status_id' => $residenceStatusId,

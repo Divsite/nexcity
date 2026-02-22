@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Models\Masters;
+namespace App\Models\Charities;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class DistributionClass extends Model
+class CharityFitrahReceipt extends Model
 {
     use HasFactory;
 
-    protected $table = 'm_distribution_classes';
+    protected $table = 'charity_fitrah_receipts';
 
     protected $guarded = ['id'];
 }

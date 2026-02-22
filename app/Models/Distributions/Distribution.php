@@ -9,7 +9,7 @@ use App\Models\Locations\District;
 use App\Models\Locations\NeighborhoodAssociation;
 use App\Models\Locations\Province;
 use App\Models\Locations\Village;
-use App\Models\Masters\DistributionType;
+use App\Models\DistributionTypes\DistributionType;
 use App\Models\Organizations\Organization;
 use App\Models\Users\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
