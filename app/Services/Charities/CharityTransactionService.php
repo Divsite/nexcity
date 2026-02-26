@@ -154,7 +154,7 @@ class CharityTransactionService
         ];
     }
 
-    public function dailyRecapData(?string $date): array
+    public function dailyRecapData(?string $date, ?int $organizationId = null): array
     {
         $recapDate = now()->startOfDay();
         if (! empty($date)) {
@@ -166,24 +166,38 @@ class CharityTransactionService
         }
 
         $context = $this->partnerContext();
+        $organizationId = $organizationId ?: ($context['organization_id'] ?? null);
 
-        $rows = $this->transactionBaseQuery($context)
+        $rows = $this->transactionBaseQuery(['organization_id' => $organizationId])
+            ->paid()
             ->withCharityRelations()
             ->createdOn($recapDate->toDateString())
             ->get()
-            ->groupBy(fn (CharityTransaction $transaction) => $transaction->charityType?->source?->name ?? __('messages.unknown'))
-            ->map(function ($items, $label) {
+            ->groupBy(fn (CharityTransaction $transaction) => $transaction->charity_type_id ?: 0)
+            ->map(function ($items) {
+                $first = $items->first();
+                $charityType = $first?->charityType;
+                $sourceName = $charityType?->source?->name ?? __('messages.unknown');
+                $year = $charityType?->year;
+                $label = trim($sourceName . ($year ? ' - ' . $year : ''));
+
                 $totalMoney = (float) $items->sum(fn (CharityTransaction $item) => $item->detailMoneyAmount());
                 $totalRice = (float) $items->sum(fn (CharityTransaction $item) => $item->detailRiceAmount());
 
                 return [
+                    'charity_type_id' => $charityType?->id,
+                    'charity_type_source_id' => $charityType?->source_id,
+                    'name' => $sourceName,
+                    'year' => $year,
                     'label' => $label,
                     'total_money' => $totalMoney,
                     'total_money_label' => $this->formatMoney($totalMoney),
                     'total_rice' => $totalRice,
+                    'total_rice_label' => $this->formatDecimal($totalRice),
                     'count' => (int) $items->count(),
                 ];
             })
+            ->sortBy('label')
             ->values();
 
         $currency = $this->currencyCode();
@@ -197,6 +211,22 @@ class CharityTransactionService
             'totalRice' => (float) $rows->sum('total_rice'),
             'totalCount' => (int) $rows->sum('count'),
             'currencyCode' => $currency,
+        ];
+    }
+
+    public function dailySummaryByOrganization(int $organizationId, ?string $date = null): array
+    {
+        $summary = $this->dailyRecapData($date, $organizationId);
+
+        return [
+            'date' => $summary['recapDate']->toDateString(),
+            'total_money' => $summary['totalMoney'],
+            'total_money_label' => $summary['totalMoneyLabel'],
+            'total_rice' => $summary['totalRice'],
+            'total_rice_label' => $this->formatDecimal((float) $summary['totalRice']),
+            'total_transactions' => $summary['totalCount'],
+            'rows' => $summary['rows'],
+            'currency' => $summary['currencyCode'],
         ];
     }
 

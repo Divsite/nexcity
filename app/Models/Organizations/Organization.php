@@ -140,6 +140,11 @@ class Organization extends Model
         return $this->hasMany(UserMenu::class);
     }
 
+    public function whatsappGroups(): HasMany
+    {
+        return $this->hasMany(OrganizationWhatsappGroup::class);
+    }
+
     public static function typeLabels(): array
     {
         return [

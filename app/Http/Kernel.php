@@ -67,6 +67,7 @@ class Kernel extends HttpKernel
         'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-        'profile_completed' => \App\Http\Middleware\EnsureProfileIsCompleted::class
+        'profile_completed' => \App\Http\Middleware\EnsureProfileIsCompleted::class,
+        'openclaw.key' => \App\Http\Middleware\OpenclawApiKey::class,
     ];
 }
