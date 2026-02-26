@@ -6,6 +6,7 @@ use App\Models\CharityPayments\CharityPayment;
 use App\Models\CharityTypes\CharityType;
 use App\Models\Organizations\Organization;
 use App\Models\Users\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,9 @@ class CharityTransaction extends Model
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PAID = 'paid';
     public const STATUS_CANCELLED = 'cancelled';
+    public const PAYMENT_METHOD_CASH = 'cash';
+    public const PAYMENT_METHOD_TRANSFER = 'transfer';
+    public const PAYMENT_METHOD_QRIS = 'qris';
 
     protected $table = 'charity_transactions';
 
@@ -33,6 +37,93 @@ class CharityTransaction extends Model
         'is_input_family_members' => 'boolean',
         'representative_total_money' => 'decimal:2',
     ];
+
+    public function scopeForOrganization(Builder $query, ?int $organizationId): Builder
+    {
+        if ($organizationId) {
+            $query->where('charity_transactions.organization_id', $organizationId);
+        }
+
+        return $query;
+    }
+
+    public function scopeForCharityType(Builder $query, ?int $charityTypeId): Builder
+    {
+        if ($charityTypeId) {
+            $query->where('charity_transactions.charity_type_id', $charityTypeId);
+        }
+
+        return $query;
+    }
+
+    public function scopeForPaymentMethod(Builder $query, ?string $paymentMethod): Builder
+    {
+        if ($paymentMethod) {
+            $query->where('charity_transactions.payment_method', $paymentMethod);
+        }
+
+        return $query;
+    }
+
+    public function scopeWithCharityRelations(Builder $query): Builder
+    {
+        return $query->with([
+            'charityType.source',
+            'organization',
+            'fitrahReceipt',
+            'fidyaReceipt',
+            'malReceipt',
+            'donationReceipt',
+            'almsReceipt',
+            'endowmentReceipt',
+        ]);
+    }
+
+    public function scopePaid(Builder $query): Builder
+    {
+        return $query->where('charity_transactions.status', self::STATUS_PAID);
+    }
+
+    public function scopeCreatedOn(Builder $query, string $date): Builder
+    {
+        return $query->whereDate('charity_transactions.created_at', $date);
+    }
+
+    public function scopeCreatedInYear(Builder $query, int $year): Builder
+    {
+        return $query->whereYear('charity_transactions.created_at', $year);
+    }
+
+    public function scopeCreatedBetweenDates(Builder $query, string $startDate, string $endDate): Builder
+    {
+        return $query
+            ->whereDate('charity_transactions.created_at', '>=', $startDate)
+            ->whereDate('charity_transactions.created_at', '<=', $endDate);
+    }
+
+    public static function paymentMethodLabels(): array
+    {
+        return [
+            self::PAYMENT_METHOD_CASH => __('messages.cash'),
+            self::PAYMENT_METHOD_TRANSFER => __('messages.transfer'),
+            self::PAYMENT_METHOD_QRIS => __('messages.qris'),
+        ];
+    }
+
+    public static function paymentMethodOptions(bool $includeAll = false): array
+    {
+        $options = [];
+
+        if ($includeAll) {
+            $options[] = ['value' => '', 'label' => __('messages.all')];
+        }
+
+        foreach (self::paymentMethodLabels() as $value => $label) {
+            $options[] = ['value' => $value, 'label' => $label];
+        }
+
+        return $options;
+    }
 
     public function organization(): BelongsTo
     {

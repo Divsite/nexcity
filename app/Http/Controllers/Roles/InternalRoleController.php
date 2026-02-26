@@ -32,6 +32,7 @@ class InternalRoleController extends Controller
         $levels = UserLevel::query()
             ->with('organization:id,type')
             ->whereHas('organization', fn ($query) => $query->whereIn('type', array_keys($contexts)))
+            ->where('slug', 'not like', '%-superadmin')
             ->orderBy('name')
             ->get();
 

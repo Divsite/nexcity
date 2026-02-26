@@ -22,6 +22,10 @@ use Illuminate\Validation\ValidationException;
 
 class CharityTransactionService
 {
+    public function __construct(
+        protected CharityReceiptTotalsService $receiptTotalsService
+    ) {
+    }
     public function create(array $data): CharityTransaction
     {
         return DB::transaction(function () use ($data) {
@@ -29,11 +33,6 @@ class CharityTransactionService
             $transaction = CharityTransaction::create($payload);
             $this->syncDetail($transaction, $detail);
             $this->syncPackagePayers($transaction, $packagePayers);
-
-            activity(__('messages.charity_transactions'))
-                ->causedBy(auth()->user())
-                ->performedOn($transaction)
-                ->log(__('messages.charity_transactions_has_been_created', ['name' => $transaction->payer_name ?? '#' . $transaction->id]));
 
             return $transaction;
         });
@@ -46,11 +45,6 @@ class CharityTransactionService
             $charityTransaction->update($payload);
             $this->syncDetail($charityTransaction, $detail, true);
             $this->syncPackagePayers($charityTransaction, $packagePayers);
-
-            activity(__('messages.charity_transactions'))
-                ->causedBy(auth()->user())
-                ->performedOn($charityTransaction)
-                ->log(__('messages.charity_transactions_has_been_updated', ['name' => $charityTransaction->payer_name ?? '#' . $charityTransaction->id]));
 
             return $charityTransaction;
         });
@@ -76,6 +70,32 @@ class CharityTransactionService
         ];
     }
 
+    public function summaryViewPayload(?array $context = null, ?int $year = null, ?string $summaryRoute = null): array
+    {
+        $targetYear = (int) ($year ?: now()->year);
+        $charityTypes = $this->charityTypeOptions($context, $targetYear);
+        $defaultTypeId = collect($charityTypes)
+            ->firstWhere('slug', 'zakat-fitrah')['id']
+            ?? ($charityTypes[0]['id'] ?? null);
+
+        return array_merge([
+            'filters' => [
+                'type_id' => $defaultTypeId,
+                'year_type_id' => $defaultTypeId,
+                'year' => $targetYear,
+                'payment_method' => '',
+                'year_payment_method' => '',
+            ],
+            'options' => [
+                'charity_types' => $charityTypes,
+                'payment_methods' => CharityTransaction::paymentMethodOptions(),
+            ],
+            'routes' => [
+                'summary' => $summaryRoute,
+            ],
+        ], $this->summaryPayload($defaultTypeId, $defaultTypeId, $targetYear));
+    }
+
     public function summaryCards(?int $typeId = null, ?string $paymentMethod = null): array
     {
         $context = $this->partnerContext();
@@ -84,15 +104,15 @@ class CharityTransactionService
         $currency = $this->currencyCode();
 
         $todayQuery = $this->transactionBaseQuery($context, $typeId, $paymentMethod)
-            ->where('charity_transactions.status', 'paid')
-            ->whereDate('charity_transactions.created_at', $today);
+            ->paid()
+            ->createdOn($today);
 
         $yearQuery = $this->transactionBaseQuery($context, $typeId, $paymentMethod)
-            ->where('charity_transactions.status', 'paid')
-            ->whereYear('charity_transactions.created_at', $year);
+            ->paid()
+            ->createdInYear($year);
 
-        $todayTotals = $this->aggregateReceiptTotalsByQuery($todayQuery);
-        $yearTotals = $this->aggregateReceiptTotalsByQuery($yearQuery);
+        $todayTotals = $this->receiptTotalsService->totalsForQuery($todayQuery);
+        $yearTotals = $this->receiptTotalsService->totalsForQuery($yearQuery);
 
         return [
             'today' => [
@@ -119,10 +139,10 @@ class CharityTransactionService
         $currency = $this->currencyCode();
 
         $query = $this->transactionBaseQuery($context, $typeId, $paymentMethod)
-            ->where('charity_transactions.status', 'paid')
-            ->whereYear('charity_transactions.created_at', $targetYear);
+            ->paid()
+            ->createdInYear($targetYear);
 
-        $totals = $this->aggregateReceiptTotalsByQuery($query);
+        $totals = $this->receiptTotalsService->totalsForQuery($query);
 
         return [
             'year' => $targetYear,
@@ -148,16 +168,8 @@ class CharityTransactionService
         $context = $this->partnerContext();
 
         $rows = $this->transactionBaseQuery($context)
-            ->with([
-                'charityType.source',
-                'fitrahReceipt',
-                'fidyaReceipt',
-                'malReceipt',
-                'donationReceipt',
-                'almsReceipt',
-                'endowmentReceipt',
-            ])
-            ->whereDate('charity_transactions.created_at', $recapDate->toDateString())
+            ->withCharityRelations()
+            ->createdOn($recapDate->toDateString())
             ->get()
             ->groupBy(fn (CharityTransaction $transaction) => $transaction->charityType?->source?->name ?? __('messages.unknown'))
             ->map(function ($items, $label) {
@@ -295,11 +307,7 @@ class CharityTransactionService
             ],
             'options' => [
                 'charity_types' => $charityTypes,
-                'payment_methods' => [
-                    ['value' => 'cash', 'label' => __('messages.cash')],
-                    ['value' => 'transfer', 'label' => __('messages.transfer')],
-                    ['value' => 'qris', 'label' => __('messages.qris')],
-                ],
+                'payment_methods' => CharityTransaction::paymentMethodOptions(),
                 'payments' => $payments,
                 'statuses' => [
                     ['value' => 'draft', 'label' => __('messages.draft')],
@@ -408,57 +416,10 @@ class CharityTransactionService
         ?string $paymentMethod = null
     ): Builder
     {
-        $query = CharityTransaction::query();
-
-        if (! empty($context['organization_id'])) {
-            $query->where('charity_transactions.organization_id', $context['organization_id']);
-        }
-
-        if ($charityTypeId) {
-            $query->where('charity_transactions.charity_type_id', $charityTypeId);
-        }
-
-        if ($paymentMethod) {
-            $query->where('charity_transactions.payment_method', $paymentMethod);
-        }
-
-        return $query;
-    }
-
-    protected function aggregateReceiptTotalsByQuery(Builder $query): array
-    {
-        $transactionIds = (clone $query)
-            ->select('charity_transactions.id')
-            ->distinct()
-            ->pluck('charity_transactions.id')
-            ->all();
-
-        if (empty($transactionIds)) {
-            return [
-                'total_money' => 0.0,
-                'total_rice' => 0.0,
-                'count' => 0,
-            ];
-        }
-
-        $totalMoney = 0.0;
-        $totalRice = 0.0;
-
-        $totalMoney += (float) DB::table('charity_fitrah_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_fidya_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_mal_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_donation_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_alms_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_endowment_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_money');
-
-        $totalRice += (float) DB::table('charity_fitrah_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_rice');
-        $totalRice += (float) DB::table('charity_fidya_receipts')->whereIn('charity_transaction_id', $transactionIds)->sum('amount_rice');
-
-        return [
-            'total_money' => $totalMoney,
-            'total_rice' => $totalRice,
-            'count' => count($transactionIds),
-        ];
+        return CharityTransaction::query()
+            ->forOrganization($context['organization_id'] ?? null)
+            ->forCharityType($charityTypeId)
+            ->forPaymentMethod($paymentMethod);
     }
 
     protected function prepareTransactionPayload(array $data, ?CharityTransaction $current = null): array
@@ -574,6 +535,12 @@ class CharityTransactionService
             $normalized['amount_rice'] = null;
         }
 
+        if ($normalized['is_rice'] && ($normalized['amount_rice'] === null || $normalized['amount_rice'] <= 0)) {
+            throw ValidationException::withMessages([
+                'total_rice' => __('validation.required', ['attribute' => __('messages.total_rice')]),
+            ]);
+        }
+
         if ($normalized['amount_money'] !== null) {
             $this->assertAmountWithinCharityRule($charityType, $normalized['amount_money'], 'total_money');
         }
@@ -594,7 +561,7 @@ class CharityTransactionService
         if ($charityType->min_amount !== null && $amount < (float) $charityType->min_amount) {
             throw ValidationException::withMessages([
                 $field => __('messages.amount_minimum_value', [
-                    'min' => $this->formatMoney((float) $charityType->min_amount),
+                    'amount' => $this->formatMoney((float) $charityType->min_amount),
                 ]),
             ]);
         }
@@ -602,7 +569,7 @@ class CharityTransactionService
         if ($charityType->max_amount !== null && $amount > (float) $charityType->max_amount) {
             throw ValidationException::withMessages([
                 $field => __('messages.amount_maximum_value', [
-                    'max' => $this->formatMoney((float) $charityType->max_amount),
+                    'amount' => $this->formatMoney((float) $charityType->max_amount),
                 ]),
             ]);
         }

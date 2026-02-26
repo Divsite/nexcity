@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Charities\CharityTransaction;
+use App\Observers\CharityTransactionObserver;
 use App\Utilities\Themes\Theme;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        CharityTransaction::observe(CharityTransactionObserver::class);
+
         View::composer('*', function ($view) {
             if (auth()->check()) {
                 $colorMode = auth()->user()->theme ?? Theme::LIGHT;

@@ -191,7 +191,10 @@ class CharityDistributionService
 
     public function formPayload(): array
     {
-        $context = $this->partnerContext();
+        $context = $this->partnerContext() ?? [
+            'organization_id' => null,
+            'organization_name' => null,
+        ];
         $organization = $context['organization_id']
             ? Organization::query()->find($context['organization_id'])
             : null;
@@ -327,8 +330,8 @@ class CharityDistributionService
         }
 
         $membership = $user->organizationMemberships()
-            ->where('is_primary', true)
             ->where('level_slug', 'like', 'mosque-%')
+            ->orderByDesc('is_primary')
             ->first();
 
         if (! $membership) {

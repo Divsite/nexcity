@@ -3,13 +3,17 @@
 namespace App\Http\Livewire\Charities;
 
 use Cknow\Money\Money;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\Charities\CharityTransactionExport;
 use App\Models\Charities\CharityTransaction;
 use App\Models\CharityTypes\CharityType;
+use App\Services\Charities\CharityReceiptTotalsService;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
+use Maatwebsite\Excel\Excel as ExcelService;
+use Maatwebsite\Excel\Facades\Excel;
 use Rappasoft\LaravelLivewireTables\DataTableComponent;
 use Rappasoft\LaravelLivewireTables\Views\Column;
 use Rappasoft\LaravelLivewireTables\Views\Filters\DateRangeFilter;
@@ -57,20 +61,11 @@ class CharityTransactionTable extends DataTableComponent
     public function builder(): Builder
     {
         $query = CharityTransaction::query()
-            ->with([
-                'charityType.source',
-                'organization',
-                'fitrahReceipt',
-                'fidyaReceipt',
-                'malReceipt',
-                'donationReceipt',
-                'almsReceipt',
-                'endowmentReceipt',
-            ])
+            ->withCharityRelations()
             ->withCount('payers');
 
         if ($this->contextOrganizationId) {
-            $query->where('charity_transactions.organization_id', $this->contextOrganizationId);
+            $query->forOrganization($this->contextOrganizationId);
         }
 
         return $query;
@@ -96,7 +91,13 @@ class CharityTransactionTable extends DataTableComponent
                 ->footer(fn () => $this->formatQuantity($this->filteredTotals()['total_rice'])),
             Column::make(__('messages.status'), 'status')
                 ->label(fn ($row) => view('charities.columns.status')->withRow($row))
-                ->footer(fn () => $this->filteredTotals()['count'] . ' ' . __('messages.transactions')),
+                ->footer(function () {
+                    $totals = $this->filteredTotals();
+
+                    return __('messages.paid') . ': ' . $totals['paid_count']
+                        . ' · ' . __('messages.draft') . ': ' . $totals['draft_count']
+                        . ' · ' . __('messages.cancelled') . ': ' . $totals['cancelled_count'];
+                }),
             Column::make(__('messages.created_at'), 'created_at')
                 ->sortable()
                 ->format(fn ($value) => $value ? $value->format('d/m/Y h:i A ') : '-'),
@@ -137,13 +138,8 @@ class CharityTransactionTable extends DataTableComponent
                 ->filter(fn (Builder $builder, string $value) => $builder->where('charity_type_id', $value)),
             SelectFilter::make(__('messages.payment_method'), 'payment_method')
                 ->setWireLive()
-                ->options([
-                    '' => __('messages.all'),
-                    'cash' => __('messages.cash'),
-                    'transfer' => __('messages.transfer'),
-                    'qris' => __('messages.qris'),
-                ])
-                ->filter(fn (Builder $builder, string $value) => $builder->where('payment_method', $value)),
+                ->options(['' => __('messages.all')] + CharityTransaction::paymentMethodLabels())
+                ->filter(fn (Builder $builder, string $value) => $builder->forPaymentMethod($value)),
             SelectFilter::make(__('messages.status'), 'status')
                 ->setWireLive()
                 ->options([
@@ -162,11 +158,11 @@ class CharityTransactionTable extends DataTableComponent
                 ])
                 ->filter(function (Builder $builder, string $value) {
                     if ($value === 'today') {
-                        $builder->whereDate('charity_transactions.created_at', now()->toDateString());
+                        $builder->createdOn(now()->toDateString());
                     }
 
                     if ($value === 'this_year') {
-                        $builder->whereYear('charity_transactions.created_at', (int) now()->year);
+                        $builder->createdInYear((int) now()->year);
                     }
                 }),
             DateRangeFilter::make(__('messages.transaction_date'), 'transaction_date')
@@ -177,9 +173,7 @@ class CharityTransactionTable extends DataTableComponent
                     'ariaDateFormat' => 'd/m/Y',
                 ])
                 ->filter(function (Builder $builder, array $dateRange) {
-                    $builder
-                        ->whereDate('charity_transactions.created_at', '>=', $dateRange['minDate'])
-                        ->whereDate('charity_transactions.created_at', '<=', $dateRange['maxDate']);
+                    $builder->createdBetweenDates($dateRange['minDate'], $dateRange['maxDate']);
                 }),
         ];
     }
@@ -196,6 +190,48 @@ class CharityTransactionTable extends DataTableComponent
         }
 
         return to_route('mosque.charity-transactions.index');
+    }
+
+    public function bulkActions(): array
+    {
+        return [
+            'exportSelectedToPDF' => __('messages.export_pdf'),
+            'exportSelectedExcel' => __('messages.export_xlsx'),
+        ];
+    }
+
+    public function exportSelectedToPDF()
+    {
+        $models = $this->exportQuery()->get();
+
+        if ($models->isEmpty()) {
+            flash()->error(__('messages.data_not_found'));
+            return to_route('mosque.charity-transactions.index');
+        }
+
+        $pdfContent = Pdf::loadView('charities.exports.pdf.index', [
+            'models' => $models,
+        ])->output();
+
+        $filename = 'Charity_Transactions_' . now()->format('Ymd_His') . '.pdf';
+
+        return response()->streamDownload(fn () => print($pdfContent), $filename);
+    }
+
+    public function exportSelectedExcel()
+    {
+        $models = $this->exportQuery()->get();
+
+        if ($models->isEmpty()) {
+            flash()->error(__('messages.data_not_found'));
+            return to_route('mosque.charity-transactions.index');
+        }
+
+        return Excel::download(
+            new CharityTransactionExport($models),
+            'Charity_Transactions_' . now()->format('Ymd_His') . '.xlsx',
+            ExcelService::XLSX
+        );
     }
 
     public function customView(): string
@@ -219,10 +255,37 @@ class CharityTransactionTable extends DataTableComponent
             return $this->totalsCache;
         }
 
+        $baseQuery = $this->filteredQuery(false);
+
+        $statusCounts = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->toArray();
+
+        $paidTotals = $this->receiptTotalsService()->totalsForQuery(
+            (clone $baseQuery)->where('status', CharityTransaction::STATUS_PAID)
+        );
+
+        $this->totalsCache = [
+            'total_money' => $paidTotals['total_money'],
+            'total_rice' => $paidTotals['total_rice'],
+            'count' => (int) ($paidTotals['count'] ?? 0),
+            'paid_count' => (int) ($statusCounts[CharityTransaction::STATUS_PAID] ?? 0),
+            'draft_count' => (int) ($statusCounts[CharityTransaction::STATUS_DRAFT] ?? 0),
+            'cancelled_count' => (int) ($statusCounts[CharityTransaction::STATUS_CANCELLED] ?? 0),
+            'total_count' => array_sum($statusCounts),
+        ];
+
+        return $this->totalsCache;
+    }
+
+    protected function filteredQuery(bool $applyStatus = true): Builder
+    {
         $query = CharityTransaction::query();
 
         if ($this->contextOrganizationId) {
-            $query->where('charity_transactions.organization_id', $this->contextOrganizationId);
+            $query->forOrganization($this->contextOrganizationId);
         }
 
         $payer = $this->getAppliedFilterWithValue('payer_name');
@@ -235,49 +298,50 @@ class CharityTransactionTable extends DataTableComponent
 
         $charityTypeId = $this->getAppliedFilterWithValue('charity_type_id');
         if (! empty($charityTypeId)) {
-            $query->where('charity_type_id', $charityTypeId);
+            $query->forCharityType($charityTypeId);
         }
 
         $paymentMethod = $this->getAppliedFilterWithValue('payment_method');
         if (! empty($paymentMethod)) {
-            $query->where('payment_method', $paymentMethod);
+            $query->forPaymentMethod($paymentMethod);
         }
 
         $status = $this->getAppliedFilterWithValue('status');
-        if (! empty($status)) {
+        if ($applyStatus && ! empty($status)) {
             $query->where('status', $status);
         }
 
         $period = $this->getAppliedFilterWithValue('period');
         if ($period === 'today') {
-            $query->whereDate('charity_transactions.created_at', now()->toDateString());
+            $query->createdOn(now()->toDateString());
         }
 
         if ($period === 'this_year') {
-            $query->whereYear('charity_transactions.created_at', (int) now()->year);
+            $query->createdInYear((int) now()->year);
         }
 
         $range = $this->getAppliedFilterWithValue('transaction_date');
         if (is_array($range) && ! empty($range['minDate']) && ! empty($range['maxDate'])) {
-            $query
-                ->whereDate('charity_transactions.created_at', '>=', Carbon::parse($range['minDate'])->toDateString())
-                ->whereDate('charity_transactions.created_at', '<=', Carbon::parse($range['maxDate'])->toDateString());
+            $query->createdBetweenDates(
+                Carbon::parse($range['minDate'])->toDateString(),
+                Carbon::parse($range['maxDate'])->toDateString()
+            );
         }
 
-        $transactionIds = (clone $query)
-            ->select('charity_transactions.id')
-            ->distinct()
-            ->pluck('charity_transactions.id');
+        return $query;
+    }
 
-        $totals = $this->aggregateReceiptTotals($transactionIds->all());
+    protected function exportQuery(): Builder
+    {
+        $query = $this->filteredQuery()
+            ->withCharityRelations()
+            ->withCount('payers');
 
-        $this->totalsCache = [
-            'total_money' => $totals['total_money'],
-            'total_rice' => $totals['total_rice'],
-            'count' => (int) $transactionIds->count(),
-        ];
+        if (! empty($this->getSelected())) {
+            $query->whereIn('charity_transactions.id', $this->getSelected());
+        }
 
-        return $this->totalsCache;
+        return $query;
     }
 
     protected function formatCurrency($value): string
@@ -315,48 +379,9 @@ class CharityTransactionTable extends DataTableComponent
         return $baseLabel . ' (' . __('messages.family_members_count') . ': ' . $memberCount . ')';
     }
 
-    protected function aggregateReceiptTotals(array $transactionIds): array
+    protected function receiptTotalsService(): CharityReceiptTotalsService
     {
-        if (empty($transactionIds)) {
-            return [
-                'total_money' => 0.0,
-                'total_rice' => 0.0,
-            ];
-        }
-
-        $totalMoney = 0.0;
-        $totalRice = 0.0;
-
-        $totalMoney += (float) DB::table('charity_fitrah_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_fidya_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_mal_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_donation_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_alms_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-        $totalMoney += (float) DB::table('charity_endowment_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_money');
-
-        $totalRice += (float) DB::table('charity_fitrah_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_rice');
-        $totalRice += (float) DB::table('charity_fidya_receipts')
-            ->whereIn('charity_transaction_id', $transactionIds)
-            ->sum('amount_rice');
-
-        return [
-            'total_money' => $totalMoney,
-            'total_rice' => $totalRice,
-        ];
+        return app(CharityReceiptTotalsService::class);
     }
 
     protected function partnerContext(): ?array

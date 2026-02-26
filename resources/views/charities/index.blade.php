@@ -62,7 +62,7 @@
                                                     <span class="badge bg-primary-subtle text-primary">
                                                         @{{ selectedTypeLabel }}
                                                     </span>
-                                                    <span class="badge bg-soft-secondary text-secondary">
+                                                    <span class="badge bg-warning-subtle text-warning">
                                                         @{{ selectedPaymentLabel }}
                                                     </span>
                                                 </div>
@@ -82,7 +82,7 @@
                                                     <span class="badge bg-primary-subtle text-primary">
                                                         @{{ selectedTypeLabel }}
                                                     </span>
-                                                    <span class="badge bg-soft-secondary text-secondary">
+                                                    <span class="badge bg-warning-subtle text-warning">
                                                         @{{ selectedPaymentLabel }}
                                                     </span>
                                                 </div>
@@ -132,7 +132,7 @@
                                                     <span class="badge bg-info-subtle text-info">
                                                         @{{ selectedYearTypeLabel }}
                                                     </span>
-                                                    <span class="badge bg-soft-secondary text-secondary">
+                                                    <span class="badge bg-warning-subtle text-warning">
                                                         @{{ selectedYearPaymentLabel }}
                                                     </span>
                                                 </div>
@@ -145,6 +145,11 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="alert alert-info mb-3">
+                                <i class="ri-information-line align-bottom me-1"></i>
+                                {{ __('messages.charity_transactions_paid_only_notice') }}
                             </div>
 
                             <div class="d-flex justify-content-end gap-2 mb-3 flex-wrap">
