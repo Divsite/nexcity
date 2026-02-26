@@ -30,12 +30,12 @@ class CharityTransactionTable extends DataTableComponent
 
     public function mount(): void
     {
-        $context = $this->partnerContext();
-        $this->contextOrganizationId = $context['organization_id'] ?? null;
+        $this->syncContext();
     }
 
     public function hydrate(): void
     {
+        $this->syncContext();
         $this->totalsCache = null;
     }
 
@@ -95,7 +95,14 @@ class CharityTransactionTable extends DataTableComponent
                 ->label(fn ($row) => $this->formatQuantity($row->detailRiceAmount()))
                 ->footer(fn () => $this->formatQuantity($this->filteredTotals()['total_rice'])),
             Column::make(__('messages.status'), 'status')
+                ->label(fn ($row) => view('charities.columns.status')->withRow($row))
                 ->footer(fn () => $this->filteredTotals()['count'] . ' ' . __('messages.transactions')),
+            Column::make(__('messages.created_at'), 'created_at')
+                ->sortable()
+                ->format(fn ($value) => $value ? $value->format('d/m/Y h:i A ') : '-'),
+            Column::make(__('messages.updated_at'), 'updated_at')
+                ->sortable()
+                ->format(fn ($value) => $value ? $value->diffForHumans() : '-'),
             Column::make(__('messages.actions'))
                 ->label(fn ($row) => view('charities.columns.actions')->withRow($row)),
         ];
@@ -335,6 +342,9 @@ class CharityTransactionTable extends DataTableComponent
         $totalMoney += (float) DB::table('charity_alms_receipts')
             ->whereIn('charity_transaction_id', $transactionIds)
             ->sum('amount_money');
+        $totalMoney += (float) DB::table('charity_endowment_receipts')
+            ->whereIn('charity_transaction_id', $transactionIds)
+            ->sum('amount_money');
 
         $totalRice += (float) DB::table('charity_fitrah_receipts')
             ->whereIn('charity_transaction_id', $transactionIds)
@@ -368,5 +378,11 @@ class CharityTransactionTable extends DataTableComponent
         return [
             'organization_id' => $membership->organization_id,
         ];
+    }
+
+    protected function syncContext(): void
+    {
+        $context = $this->partnerContext();
+        $this->contextOrganizationId = $context['organization_id'] ?? null;
     }
 }

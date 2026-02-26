@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('item_name')->nullable();
             $table->decimal('item_value', 18, 2)->nullable();
             $table->unsignedInteger('quantity')->nullable();
+            $table->decimal('amount_money', 18, 2)->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

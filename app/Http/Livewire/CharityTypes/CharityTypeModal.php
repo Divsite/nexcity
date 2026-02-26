@@ -77,7 +77,7 @@ class CharityTypeModal extends Component
         $this->description = $model->description;
         $this->is_active = (bool) $model->is_active;
 
-        $this->dispatch('currency-sync', [
+        $this->dispatchBrowser('currency-sync', [
             'id' => $this->getId(),
             'values' => [
                 'min_amount' => $this->min_amount,
@@ -89,6 +89,11 @@ class CharityTypeModal extends Component
     public function save(): void
     {
         $data = $this->validate();
+
+        if ($this->min_amount !== null && $this->max_amount !== null && $this->max_amount < $this->min_amount) {
+            $this->addError('max_amount', __('messages.max_amount_must_be_greater_equal_min_amount'));
+            return;
+        }
 
         if ($this->is_rice && empty($this->total_rice)) {
             $this->addError('total_rice', __('validation.required', ['attribute' => __('messages.total_rice')]));
@@ -152,13 +157,23 @@ class CharityTypeModal extends Component
         $this->is_active = true;
         $this->resetValidation();
 
-        $this->dispatch('currency-sync', [
+        $this->dispatchBrowser('currency-sync', [
             'id' => $this->getId(),
             'values' => [
                 'min_amount' => $this->min_amount,
                 'max_amount' => $this->max_amount,
             ],
         ]);
+    }
+
+    protected function dispatchBrowser(string $name, array $payload = []): void
+    {
+        if (method_exists($this, 'dispatchBrowserEvent')) {
+            $this->dispatchBrowserEvent($name, $payload);
+            return;
+        }
+
+        $this->dispatch($name, ...$payload);
     }
 
     private function partnerContext(): ?array

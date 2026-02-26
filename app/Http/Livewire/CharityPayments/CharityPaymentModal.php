@@ -69,7 +69,7 @@ class CharityPaymentModal extends Component
         $this->notes = $model->notes;
         $this->is_active = (bool) $model->is_active;
 
-        $this->dispatch('select-sync', [
+        $this->dispatchBrowser('select-sync', [
             'id' => $this->getId(),
             'field' => 'bank_id',
             'value' => $this->bank_id,
@@ -122,11 +122,21 @@ class CharityPaymentModal extends Component
         $this->is_active = true;
         $this->resetValidation();
 
-        $this->dispatch('select-sync', [
+        $this->dispatchBrowser('select-sync', [
             'id' => $this->getId(),
             'field' => 'bank_id',
             'value' => $this->bank_id,
         ]);
+    }
+
+    protected function dispatchBrowser(string $name, array $payload = []): void
+    {
+        if (method_exists($this, 'dispatchBrowserEvent')) {
+            $this->dispatchBrowserEvent($name, $payload);
+            return;
+        }
+
+        $this->dispatch($name, ...$payload);
     }
 
     private function partnerContext(): ?array

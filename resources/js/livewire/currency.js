@@ -87,8 +87,8 @@ document.addEventListener('livewire:initialized', () => {
     mountCurrencyWidgets();
 });
 
-window.addEventListener('currency-sync', (event) => {
-    const detail = event.detail || {};
+const handleCurrencySync = (payload = {}) => {
+    const detail = Array.isArray(payload) ? (payload[0] || {}) : (payload || {});
     const livewireId = detail.id;
     if (!livewireId) {
         return;
@@ -113,7 +113,15 @@ window.addEventListener('currency-sync', (event) => {
 
         input._vci.setValue(value ?? null);
     });
+};
+
+window.addEventListener('currency-sync', (event) => {
+    handleCurrencySync(event.detail || {});
 });
+
+if (window.Livewire && typeof window.Livewire.on === 'function') {
+    window.Livewire.on('currency-sync', (payload) => handleCurrencySync(payload));
+}
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     mountCurrencyWidgets();

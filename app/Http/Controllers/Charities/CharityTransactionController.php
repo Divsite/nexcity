@@ -6,6 +6,8 @@ use Cknow\Money\Money;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Charities\StoreCharityTransactionRequest;
 use App\Http\Requests\Charities\UpdateCharityTransactionRequest;
+use App\Http\Resources\Charities\CharityDistributionResource;
+use App\Http\Resources\Charities\CharityTransactionSummaryResource;
 use App\Models\Charities\CharityAlmsReceipt;
 use App\Models\Charities\CharityDonationReceipt;
 use App\Models\Charities\CharityEndowmentReceipt;
@@ -16,6 +18,10 @@ use App\Models\Charities\CharityTransactionPayer;
 use App\Models\CharityPayments\CharityPayment;
 use App\Models\Charities\CharityTransaction;
 use App\Models\CharityTypes\CharityType;
+use App\Models\Distributions\Distribution;
+use App\Models\Distributions\DistributionRecipient;
+use App\Models\DistributionClasses\DistributionClass;
+use App\Models\DistributionTypes\DistributionType;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -25,23 +31,55 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use App\Services\Charities\CharityDistributionService;
+use App\Services\Charities\CharityTransactionService;
 
 class CharityTransactionController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('permission:browse-mosque-charity-transactions')->only('index');
+    public function __construct(
+        protected CharityTransactionService $transactionService,
+        protected CharityDistributionService $distributionService
+    ) {
+        $this->middleware('permission:browse-mosque-charity-transactions')->only(['index', 'dailyRecap', 'summary']);
         $this->middleware('permission:add-mosque-charity-transactions')->only(['create', 'store']);
         $this->middleware('permission:edit-mosque-charity-transactions')->only(['edit', 'update']);
         $this->middleware('permission:delete-mosque-charity-transactions')->only('destroy');
-        $this->middleware('permission:browse-mosque-charity-transactions')->only('dailyRecap');
     }
 
     public function index(): View
     {
+        $context = $this->transactionService->partnerContext();
+        $year = (int) now()->year;
+        $charityTypes = $this->transactionService->charityTypeOptions($context, $year);
+        $defaultTypeId = collect($charityTypes)->firstWhere('slug', 'zakat-fitrah')['id'] ?? ($charityTypes[0]['id'] ?? null);
+        $summaryPayload = array_merge([
+            'filters' => [
+                'type_id' => $defaultTypeId,
+                'year_type_id' => $defaultTypeId,
+                'year' => $year,
+                'payment_method' => null,
+                'year_payment_method' => null,
+            ],
+            'options' => [
+                'charity_types' => $charityTypes,
+                'payment_methods' => [
+                    ['value' => 'cash', 'label' => __('messages.cash')],
+                    ['value' => 'transfer', 'label' => __('messages.transfer')],
+                    ['value' => 'qris', 'label' => __('messages.qris')],
+                ],
+            ],
+            'routes' => [
+                'summary' => route('mosque.charity-transactions.summary'),
+            ],
+        ], $this->transactionService->summaryPayload($defaultTypeId, $defaultTypeId, $year));
+
         return view('charities.index', [
-            'formPayload' => $this->formPayload(new CharityTransaction(), true),
-            'summaryCards' => $this->summaryCards(),
+            'formPayload' => $this->transactionService->formPayload(new CharityTransaction(), true),
+            'distributionFormPayload' => (new CharityDistributionResource($this->distributionService->formPayload()))
+                ->toArray(request()),
+            'summaryPayload' => (new CharityTransactionSummaryResource($summaryPayload))
+                ->toArray(request()),
+            'distributionSummary' => $this->distributionService->distributionSummary(),
             'dailyRecapPrintUrl' => route('mosque.charity-transactions.daily-recap.print'),
         ]);
     }
@@ -49,33 +87,44 @@ class CharityTransactionController extends Controller
     public function create(): View
     {
         return view('charities.create', [
-            'formPayload' => $this->formPayload(new CharityTransaction()),
+            'formPayload' => $this->transactionService->formPayload(new CharityTransaction()),
         ]);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'type_id' => ['nullable', 'integer'],
+            'year_type_id' => ['nullable', 'integer'],
+            'year' => ['nullable', 'integer', 'min:2000'],
+            'payment_method' => ['nullable', 'in:cash,transfer,qris'],
+            'year_payment_method' => ['nullable', 'in:cash,transfer,qris'],
+        ]);
+
+        $payload = $this->transactionService->summaryPayload(
+            $data['type_id'] ?? null,
+            $data['year_type_id'] ?? null,
+            $data['year'] ?? null,
+            $data['payment_method'] ?? null,
+            $data['year_payment_method'] ?? null
+        );
+
+        return response()->json(
+            (new CharityTransactionSummaryResource($payload))->toArray($request)
+        );
     }
 
     public function store(StoreCharityTransactionRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $context = $this->partnerContext();
+        $context = $this->transactionService->partnerContext();
         $isModal = $request->input('_mode') === 'modal';
 
         if ($context) {
             $data['organization_id'] = $context['organization_id'];
         }
 
-        $transaction = DB::transaction(function () use ($data) {
-            [$payload, $detail, $packagePayers] = $this->prepareTransactionPayload($data);
-            $transaction = CharityTransaction::create($payload);
-            $this->syncDetail($transaction, $detail);
-            $this->syncPackagePayers($transaction, $packagePayers);
-
-            activity(__('messages.charity_transactions'))
-                ->causedBy(auth()->user())
-                ->performedOn($transaction)
-                ->log(__('messages.charity_transactions_has_been_created', ['name' => $transaction->payer_name ?? '#' . $transaction->id]));
-
-            return $transaction;
-        });
+        $transaction = $this->transactionService->create($data);
 
         if ($isModal) {
             return response()->json([
@@ -95,30 +144,20 @@ class CharityTransactionController extends Controller
     public function edit(CharityTransaction $charityTransaction): View
     {
         return view('charities.edit', [
-            'formPayload' => $this->formPayload($charityTransaction),
+            'formPayload' => $this->transactionService->formPayload($charityTransaction),
         ]);
     }
 
     public function update(UpdateCharityTransactionRequest $request, CharityTransaction $charityTransaction): JsonResponse
     {
         $data = $request->validated();
-        $context = $this->partnerContext();
+        $context = $this->transactionService->partnerContext();
 
         if ($context) {
             $data['organization_id'] = $context['organization_id'];
         }
 
-        DB::transaction(function () use ($charityTransaction, $data) {
-            [$payload, $detail, $packagePayers] = $this->prepareTransactionPayload($data, $charityTransaction);
-            $charityTransaction->update($payload);
-            $this->syncDetail($charityTransaction, $detail, true);
-            $this->syncPackagePayers($charityTransaction, $packagePayers);
-
-            activity(__('messages.charity_transactions'))
-                ->causedBy(auth()->user())
-                ->performedOn($charityTransaction)
-                ->log(__('messages.charity_transactions_has_been_updated', ['name' => $charityTransaction->payer_name ?? '#' . $charityTransaction->id]));
-        });
+        $this->transactionService->update($charityTransaction, $data);
 
         flash()->success(__('messages.updated_successfully'));
 
@@ -129,56 +168,9 @@ class CharityTransactionController extends Controller
 
     public function dailyRecap(Request $request): View
     {
-        $date = $request->query('date');
-        $recapDate = now()->startOfDay();
-        if (! empty($date)) {
-            try {
-                $recapDate = Carbon::parse($date)->startOfDay();
-            } catch (\Throwable $exception) {
-                $recapDate = now()->startOfDay();
-            }
-        }
-        $context = $this->partnerContext();
+        $payload = $this->transactionService->dailyRecapData($request->query('date'));
 
-        $rows = $this->transactionBaseQuery($context)
-            ->with([
-                'charityType.source',
-                'fitrahReceipt',
-                'fidyaReceipt',
-                'malReceipt',
-                'donationReceipt',
-                'almsReceipt',
-                'endowmentReceipt',
-            ])
-            ->whereDate('charity_transactions.created_at', $recapDate->toDateString())
-            ->get()
-            ->groupBy(fn (CharityTransaction $transaction) => $transaction->charityType?->source?->name ?? __('messages.unknown'))
-            ->map(function ($items, $label) {
-                $totalMoney = (float) $items->sum(fn (CharityTransaction $item) => $item->detailMoneyAmount());
-                $totalRice = (float) $items->sum(fn (CharityTransaction $item) => $item->detailRiceAmount());
-
-                return [
-                    'label' => $label,
-                    'total_money' => $totalMoney,
-                    'total_money_label' => $this->formatMoney($totalMoney),
-                    'total_rice' => $totalRice,
-                    'count' => (int) $items->count(),
-                ];
-            })
-            ->values();
-
-        $currency = $this->currencyCode();
-
-        return view('charities.recap-daily-print', [
-            'rows' => $rows,
-            'recapDate' => $recapDate,
-            'organizationName' => $context['organization_name'] ?? null,
-            'totalMoney' => (float) $rows->sum('total_money'),
-            'totalMoneyLabel' => $this->formatMoney((float) $rows->sum('total_money'), $currency),
-            'totalRice' => (float) $rows->sum('total_rice'),
-            'totalCount' => (int) $rows->sum('count'),
-            'currencyCode' => $currency,
-        ]);
+        return view('charities.recap-daily-print', $payload);
     }
 
     protected function formPayload(CharityTransaction $transaction, bool $modal = false): array
@@ -435,6 +427,97 @@ class CharityTransactionController extends Controller
         ];
     }
 
+    protected function distributionSummary(): array
+    {
+        $context = $this->partnerContext();
+        $currency = $this->currencyCode();
+        $canViewAll = $this->canViewAllDistributions();
+
+        $zakatTypeId = DistributionType::query()
+            ->where('slug', 'zakat')
+            ->value('id');
+
+        $query = Distribution::query()
+            ->withCount([
+                'recipients',
+                'recipients as distributed_count' => fn (Builder $builder) => $builder->where('status', 'distributed'),
+                'recipients as failed_count' => fn (Builder $builder) => $builder->where('status', 'failed'),
+            ]);
+
+        if (! empty($context['organization_id'])) {
+            $query->where('distributions.organization_id', $context['organization_id']);
+        }
+
+        if ($zakatTypeId) {
+            $query->where('distribution_type_id', $zakatTypeId);
+        }
+
+        if (! $canViewAll) {
+            $query->whereHas('officers', fn (Builder $builder) => $builder->where('officer_id', auth()->id()));
+        }
+
+        $totalMoney = 0.0;
+        $distributedMoney = 0.0;
+        $totalRice = 0.0;
+        $distributedRice = 0.0;
+        $totalRecipients = 0;
+        $distributedRecipients = 0;
+        $failedRecipients = 0;
+
+        $distributions = $query->get();
+        $distributionIds = $distributions->pluck('id')->filter()->values()->all();
+
+        $classMap = DistributionRecipient::query()
+            ->whereIn('distribution_id', $distributionIds)
+            ->whereNotNull('distribution_class_id')
+            ->select('distribution_id', 'distribution_class_id')
+            ->groupBy('distribution_id', 'distribution_class_id')
+            ->pluck('distribution_class_id', 'distribution_id');
+
+        $classIds = $classMap->values()->unique()->filter()->values()->all();
+        $classes = DistributionClass::query()
+            ->whereIn('id', $classIds)
+            ->get()
+            ->keyBy('id');
+
+        foreach ($distributions as $distribution) {
+            $classId = $classMap[$distribution->id] ?? null;
+            $class = $classId ? $classes->get($classId) : null;
+            $moneyPer = (float) ($class?->get_money ?? 0);
+            $ricePer = (float) ($class?->get_rice ?? 0);
+            $recipients = (int) $distribution->recipients_count;
+            $distributed = (int) $distribution->distributed_count;
+
+            $totalRecipients += $recipients;
+            $distributedRecipients += $distributed;
+            $failedRecipients += (int) $distribution->failed_count;
+
+            $totalMoney += $moneyPer * $recipients;
+            $distributedMoney += $moneyPer * $distributed;
+            $totalRice += $ricePer * $recipients;
+            $distributedRice += $ricePer * $distributed;
+        }
+
+        return [
+            'total_recipients' => $totalRecipients,
+            'distributed_recipients' => $distributedRecipients,
+            'failed_recipients' => $failedRecipients,
+            'pending_recipients' => max($totalRecipients - $distributedRecipients - $failedRecipients, 0),
+            'total_money' => $totalMoney,
+            'distributed_money' => $distributedMoney,
+            'total_money_label' => $this->formatMoney($totalMoney, $currency),
+            'distributed_money_label' => $this->formatMoney($distributedMoney, $currency),
+            'total_rice' => $totalRice,
+            'distributed_rice' => $distributedRice,
+            'total_rice_label' => $this->formatDecimal($totalRice),
+            'distributed_rice_label' => $this->formatDecimal($distributedRice),
+            'remaining_money' => max($totalMoney - $distributedMoney, 0),
+            'remaining_money_label' => $this->formatMoney(max($totalMoney - $distributedMoney, 0), $currency),
+            'remaining_rice' => max($totalRice - $distributedRice, 0),
+            'remaining_rice_label' => $this->formatDecimal(max($totalRice - $distributedRice, 0)),
+        ];
+    }
+
     protected function formatMoney(float $amount, ?string $currency = null): string
     {
         $currency = strtoupper($currency ?: $this->currencyCode());
@@ -454,6 +537,25 @@ class CharityTransactionController extends Controller
     protected function formatDecimal(float $value): string
     {
         return Number::format($value, 2, 2, App::currentLocale());
+    }
+
+    protected function canViewAllDistributions(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        $membership = $user->organizationMemberships()
+            ->where('is_primary', true)
+            ->where('level_slug', 'like', 'mosque-%')
+            ->first();
+
+        if (! $membership) {
+            return false;
+        }
+
+        return str_contains($membership->level_slug, 'superadmin');
     }
 
     protected function transactionBaseQuery(?array $context = null): Builder

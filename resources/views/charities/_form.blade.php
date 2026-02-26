@@ -6,7 +6,7 @@
                 <select class="form-select" v-model="form.charity_type_id">
                     <option value="">{{ __('messages.please_select') }}</option>
                     <option v-for="item in options.charity_types" :key="item.id" :value="item.id">
-                        @{{ item.source ? item.source.name : '-' }} (@{{ item.year }})
+                        @{{ item.name || '-' }} (@{{ item.year }})
                     </option>
                 </select>
                 <span class="invalid-feedback d-block" v-if="errors.charity_type_id">
@@ -157,7 +157,7 @@
                 <select class="form-select" v-model="form.charity_payment_id">
                     <option value="">{{ __('messages.please_select') }}</option>
                     <option v-for="payment in options.payments" :value="payment.id" :key="payment.id">
-                        @{{ payment.type ? payment.type.toUpperCase() : '-' }} - @{{ payment.bank ? payment.bank.name : '-' }} - @{{ payment.account_name || '-' }}
+                        @{{ payment.type ? payment.type.toUpperCase() : '-' }} - @{{ payment.bank_name || '-' }} - @{{ payment.account_name || '-' }}
                     </option>
                 </select>
                 <span class="invalid-feedback d-block" v-if="errors.charity_payment_id">
@@ -166,7 +166,7 @@
 
                 <div class="alert alert-light border mt-2 mb-0 py-2" v-if="selectedPayment">
                     <div class="small text-muted mb-1">{{ __('messages.payment_transfer_target') }}</div>
-                    <div class="fw-semibold">@{{ selectedPayment.bank ? selectedPayment.bank.name : '-' }}</div>
+                    <div class="fw-semibold">@{{ selectedPayment.bank_name || '-' }}</div>
                     <div class="small">{{ __('messages.account_name') }}: <strong>@{{ selectedPayment.account_name || '-' }}</strong></div>
                     <div class="small">{{ __('messages.account_number') }}: <strong>@{{ selectedPayment.account_number || '-' }}</strong></div>
                 </div>
@@ -179,10 +179,12 @@
                     {{ __('messages.total_money') }}
                     <span class="text-danger" v-if="!selectedCharityType || !selectedCharityType.is_rice || !form.detail.is_rice">*</span>
                 </label>
-                <currency-input-field
+                <vue-currency-input
                     v-model="form.total_money"
-                    :input-class="`form-control ${errors.total_money ? 'is-invalid' : ''}`"
-                ></currency-input-field>
+                    :options="currencyOptions"
+                    :class="`form-control ${errors.total_money ? 'is-invalid' : ''}`"
+                    :disabled="form.is_package"
+                ></vue-currency-input>
                 <span class="invalid-feedback d-block" v-if="errors.total_money">
                     <strong>@{{ errors.total_money[0] }}</strong>
                 </span>
@@ -263,10 +265,11 @@
         <div class="row mb-3" v-if="form.use_same_package_amount">
             <div class="col-lg-4">
                 <label class="form-label">{{ __('messages.package_amount_each') }} <span class="text-danger">*</span></label>
-                <currency-input-field
+                <vue-currency-input
                     v-model="form.package_amount_each"
-                    :input-class="`form-control ${errors.package_amount_each ? 'is-invalid' : ''}`"
-                ></currency-input-field>
+                    :options="currencyOptions"
+                    :class="`form-control ${errors.package_amount_each ? 'is-invalid' : ''}`"
+                ></vue-currency-input>
                 <span class="invalid-feedback d-block" v-if="errors.package_amount_each">
                     <strong>@{{ errors.package_amount_each[0] }}</strong>
                 </span>
@@ -283,10 +286,11 @@
         <div class="row mb-3" v-if="!form.use_same_package_amount">
             <div class="col-lg-4">
                 <label class="form-label">{{ __('messages.representative_total_money') }} <span class="text-danger">*</span></label>
-                <currency-input-field
+                <vue-currency-input
                     v-model="form.representative_total_money"
-                    :input-class="`form-control ${errors.representative_total_money ? 'is-invalid' : ''}`"
-                ></currency-input-field>
+                    :options="currencyOptions"
+                    :class="`form-control ${errors.representative_total_money ? 'is-invalid' : ''}`"
+                ></vue-currency-input>
                 <span class="invalid-feedback d-block" v-if="errors.representative_total_money">
                     <strong>@{{ errors.representative_total_money[0] }}</strong>
                 </span>
@@ -339,11 +343,12 @@
                             </span>
                         </td>
                         <td>
-                            <currency-input-field
+                            <vue-currency-input
                                 v-model="payer.total_money"
+                                :options="currencyOptions"
                                 :disabled="form.use_same_package_amount"
-                                :input-class="`form-control ${firstError('package_payers.' + index + '.total_money') ? 'is-invalid' : ''}`"
-                            ></currency-input-field>
+                                :class="`form-control ${firstError('package_payers.' + index + '.total_money') ? 'is-invalid' : ''}`"
+                            ></vue-currency-input>
                             <span class="invalid-feedback d-block" v-if="firstError('package_payers.' + index + '.total_money')">
                                 <strong>@{{ firstError('package_payers.' + index + '.total_money') }}</strong>
                             </span>

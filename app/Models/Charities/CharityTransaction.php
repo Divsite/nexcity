@@ -11,10 +11,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class CharityTransaction extends Model
 {
     use HasFactory;
+
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_PAID = 'paid';
+    public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'charity_transactions';
 
@@ -25,6 +30,8 @@ class CharityTransaction extends Model
         'use_same_package_amount' => 'boolean',
         'package_amount_each' => 'decimal:2',
         'package_members_count' => 'integer',
+        'is_input_family_members' => 'boolean',
+        'representative_total_money' => 'decimal:2',
     ];
 
     public function organization(): BelongsTo
@@ -50,6 +57,11 @@ class CharityTransaction extends Model
     public function payers(): HasMany
     {
         return $this->hasMany(CharityTransactionPayer::class, 'charity_transaction_id');
+    }
+
+    public function packagePayers(): HasMany
+    {
+        return $this->payers();
     }
 
     public function fitrahReceipt(): HasOne
@@ -89,7 +101,8 @@ class CharityTransaction extends Model
             ($this->fidyaReceipt?->amount_money ?? 0) +
             ($this->malReceipt?->amount_money ?? 0) +
             ($this->donationReceipt?->amount_money ?? 0) +
-            ($this->almsReceipt?->amount_money ?? 0)
+            ($this->almsReceipt?->amount_money ?? 0) +
+            ($this->endowmentReceipt?->amount_money ?? 0)
         );
     }
 
@@ -114,5 +127,27 @@ class CharityTransaction extends Model
     public function detailIsRice(): bool
     {
         return (bool) ($this->fitrahReceipt?->is_rice || $this->fidyaReceipt?->is_rice);
+    }
+
+    public function statusLabel(): string
+    {
+        $status = (string) $this->status;
+        $translated = __('messages.' . $status);
+
+        if ($translated !== 'messages.' . $status) {
+            return $translated;
+        }
+
+        return Str::title(str_replace('_', ' ', $status));
+    }
+
+    public function statusBadgeClass(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PAID => 'badge bg-success-subtle text-success',
+            self::STATUS_DRAFT => 'badge bg-warning-subtle text-warning',
+            self::STATUS_CANCELLED => 'badge bg-danger-subtle text-danger',
+            default => 'badge bg-secondary-subtle text-secondary',
+        };
     }
 }

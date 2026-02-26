@@ -30,6 +30,8 @@
         "filepond-plugin-file-validate-size": "^2.2.8",
         "filepond-plugin-file-validate-type": "^1.2.8",
         "filepond-plugin-image-preview": "^4.6.11",
+        "flatpickr": "^4.6.13",
+        "flatpickr-year-select-plugin": "^1.0.0",
         "jquery": "^3.7.0",
         "pinia": "^2.0.33",
         "select2": "^4.1.0-rc.0",

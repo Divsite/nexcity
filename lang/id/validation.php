@@ -236,5 +236,12 @@ return [
         'package_payers.*.payer_email' => 'email pembayar paket',
         'package_payers.*.total_money' => 'total uang pembayar paket',
         'detail.is_rice' => 'pembayaran beras',
+        'distribution_class_id' => 'kelas distribusi',
+        'officer_ids' => 'petugas',
+        'recipient_ids' => 'penerima',
+        'manual_recipients' => 'penerima manual',
+        'manual_recipients.*.name' => 'nama penerima manual',
+        'manual_recipients.*.phone' => 'telepon penerima manual',
+        'manual_recipients.*.address' => 'alamat penerima manual',
     ],
 ];

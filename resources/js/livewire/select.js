@@ -97,8 +97,8 @@ document.addEventListener('livewire:initialized', () => {
     mountLivewireSelects();
 });
 
-window.addEventListener('select-sync', (event) => {
-    const detail = event.detail || {};
+const handleSelectSync = (payload = {}) => {
+    const detail = Array.isArray(payload) ? (payload[0] || {}) : (payload || {});
     const livewireId = detail.id;
     const field = detail.field;
     const value = detail.value ?? '';
@@ -120,7 +120,15 @@ window.addEventListener('select-sync', (event) => {
     if (select) {
         $(select).val(value).trigger('change');
     }
+};
+
+window.addEventListener('select-sync', (event) => {
+    handleSelectSync(event.detail || {});
 });
+
+if (window.Livewire && typeof window.Livewire.on === 'function') {
+    window.Livewire.on('select-sync', (payload) => handleSelectSync(payload));
+}
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     mountLivewireSelects();

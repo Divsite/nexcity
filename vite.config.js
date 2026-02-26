@@ -43,6 +43,8 @@ export default defineConfig({
                 'resources/js/livewire/currency.js',
                 'resources/js/livewire/select.js',
                 'resources/js/views/charities/form.js',
+                'resources/js/views/charities/summary.js',
+                'resources/js/views/distributions/form.js',
             ],
             refresh: true,
         }),

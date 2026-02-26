@@ -198,6 +198,13 @@ return [
         'package_payers.*.payer_email' => 'package payer email',
         'package_payers.*.total_money' => 'package payer total money',
         'detail.is_rice' => 'include rice payment',
+        'distribution_class_id' => 'distribution class',
+        'officer_ids' => 'officers',
+        'recipient_ids' => 'recipients',
+        'manual_recipients' => 'manual recipients',
+        'manual_recipients.*.name' => 'manual recipient name',
+        'manual_recipients.*.phone' => 'manual recipient phone',
+        'manual_recipients.*.address' => 'manual recipient address',
     ],
 
 ];

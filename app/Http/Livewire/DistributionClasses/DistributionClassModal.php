@@ -71,7 +71,7 @@ class DistributionClassModal extends Component
         $this->description = $model->description;
         $this->is_active = (bool) $model->is_active;
 
-        $this->dispatch('currency-sync', [
+        $this->dispatchBrowser('currency-sync', [
             'id' => $this->getId(),
             'values' => [
                 'get_money' => $this->get_money,
@@ -138,12 +138,22 @@ class DistributionClassModal extends Component
         $this->is_active = true;
         $this->resetValidation();
 
-        $this->dispatch('currency-sync', [
+        $this->dispatchBrowser('currency-sync', [
             'id' => $this->getId(),
             'values' => [
                 'get_money' => $this->get_money,
             ],
         ]);
+    }
+
+    protected function dispatchBrowser(string $name, array $payload = []): void
+    {
+        if (method_exists($this, 'dispatchBrowserEvent')) {
+            $this->dispatchBrowserEvent($name, $payload);
+            return;
+        }
+
+        $this->dispatch($name, ...$payload);
     }
 
     private function partnerContext(): ?array

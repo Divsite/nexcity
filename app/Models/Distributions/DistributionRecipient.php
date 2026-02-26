@@ -16,6 +16,7 @@ class DistributionRecipient extends Model
 
     protected $casts = [
         'distributed_at' => 'datetime',
+        'reschedule_at' => 'datetime',
     ];
 
     public function distribution(): BelongsTo

@@ -217,7 +217,15 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
         // charity modules
         Route::get('charity-transactions/recap/daily/print', [CharityTransactionController::class, 'dailyRecap'])
             ->name('charity-transactions.daily-recap.print');
+        Route::get('charity-transactions/summary', [CharityTransactionController::class, 'summary'])
+            ->name('charity-transactions.summary');
         Route::resource('charity-transactions', CharityTransactionController::class);
+        Route::get('charity-distributions/residents', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'residents'])
+            ->name('charity-distributions.residents');
+        Route::post('charity-distributions', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'store'])
+            ->name('charity-distributions.store');
+        Route::get('charity-distributions/{distribution}', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'show'])
+            ->name('charity-distributions.show');
 
         Route::get('qurban', ModulePlaceholderController::class)->name('qurban')->defaults('slug', 'mosque-qurban');
         Route::get('distributions', ModulePlaceholderController::class)->name('distribution')->defaults('slug', 'mosque-distribution');

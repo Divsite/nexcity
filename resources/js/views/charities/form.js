@@ -1,5 +1,5 @@
-import { createApp, watch } from "vue";
-import { useCurrencyInput } from "vue-currency-input";
+import { createApp } from "vue";
+import VueCurrencyInput from "../../components/Forms/Helpers/VueCurrencyInput.vue";
 
 const payload = window.charityTransactionForm || {
     mode: 'create',
@@ -37,48 +37,9 @@ const createEmptyPayer = (defaultTotalMoney = null) => ({
     notes: '',
 });
 
-const CurrencyInputField = {
-    name: 'CurrencyInputField',
-    props: {
-        modelValue: {
-            required: false,
-            default: null,
-        },
-        inputClass: {
-            type: String,
-            default: 'form-control',
-        },
-        disabled: {
-            type: Boolean,
-            default: false,
-        },
-    },
-    emits: ['update:modelValue'],
-    setup(props, { emit }) {
-        const { inputRef, numberValue, setValue } = useCurrencyInput(currencyOptions, false);
-
-        watch(
-            () => props.modelValue,
-            (value) => {
-                setValue(toNumber(value));
-            },
-            { immediate: true }
-        );
-
-        watch(numberValue, (value) => {
-            emit('update:modelValue', toNumber(value));
-        });
-
-        return {
-            inputRef,
-        };
-    },
-    template: '<input ref="inputRef" type="text" :class="inputClass" :disabled="disabled">',
-};
-
 createApp({
     components: {
-        CurrencyInputField,
+        VueCurrencyInput,
     },
     data() {
         const initialForm = {
@@ -142,6 +103,7 @@ createApp({
             loading: false,
             submit_form_key: 0,
             initialForm,
+            currencyOptions,
         };
     },
     computed: {
@@ -171,6 +133,11 @@ createApp({
         },
     },
     watch: {
+        'form.representative_total_money'() {
+            if (this.form.is_package && !this.form.use_same_package_amount) {
+                this.recalculatePackageTotal();
+            }
+        },
         'form.is_package'(value) {
             if (value) {
                 if (!this.form.package_members_count) {
@@ -245,9 +212,6 @@ createApp({
             this.recalculatePackageTotal();
         },
         'form.package_members_count'() {
-            this.recalculatePackageTotal();
-        },
-        'form.representative_total_money'() {
             this.recalculatePackageTotal();
         },
         'form.package_amount_each'() {
@@ -334,7 +298,6 @@ createApp({
                 return carry + (toNumber(payer.total_money) || 0);
             }, 0);
             this.form.total_money = representativeAmount + familyMembersAmount;
-
             this.form.package_members_count = this.form.package_payers.length + 1;
         },
         applySamePackageAmount() {
@@ -398,11 +361,7 @@ createApp({
                 },
             };
 
-            if (data.is_package && data.use_same_package_amount && data.is_input_family_members) {
-                data.package_payers = data.package_payers.filter((payer) => {
-                    return payer.payer_name || payer.payer_phone || payer.payer_email || payer.notes;
-                });
-            }
+            // keep empty rows so validation can catch missing payer_name when input family members is enabled
 
             if (this.mode === 'edit') {
                 data._method = 'PUT';
