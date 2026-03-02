@@ -42,6 +42,7 @@ class StoreDistributionRequest extends FormRequest
             $useManual = $this->boolean('use_manual_recipients');
             $recipientIds = $this->input('recipient_ids', []);
             $manualRecipients = $this->input('manual_recipients', []);
+            $neighborhood = $this->input('neighborhood_association_id');
 
             if ($useManual && empty($manualRecipients)) {
                 $validator->errors()->add('manual_recipients', __('messages.manual_recipients_required'));
@@ -49,6 +50,10 @@ class StoreDistributionRequest extends FormRequest
 
             if (! $useManual && empty($recipientIds)) {
                 $validator->errors()->add('recipient_ids', __('messages.recipients_required'));
+            }
+
+            if (! $useManual && empty($neighborhood)) {
+                $validator->errors()->add('neighborhood_association_id', __('messages.neighborhood_required'));
             }
         });
     }

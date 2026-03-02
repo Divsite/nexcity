@@ -7,6 +7,7 @@ use App\Models\Users\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DistributionRecipient extends Model
 {
@@ -32,5 +33,15 @@ class DistributionRecipient extends Model
     public function distributionClass(): BelongsTo
     {
         return $this->belongsTo(DistributionClass::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(DistributionRecipientAttachment::class, 'distribution_recipient_id');
     }
 }

@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('distribution_id')->constrained()->cascadeOnDelete();
             $table->foreignId('officer_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('neighborhood_association_id')->nullable()->constrained('loc_neighborhood_associations')->nullOnDelete();
             $table->text('notes')->nullable();
             $table->timestamps();
 

@@ -70,6 +70,7 @@ class CharityTransaction extends Model
         return $query->with([
             'charityType.source',
             'organization',
+            'receivedBy',
             'fitrahReceipt',
             'fidyaReceipt',
             'malReceipt',

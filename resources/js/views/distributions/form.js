@@ -12,6 +12,7 @@ createApp({
     data() {
         return {
             form: {
+                id: payload.form?.id || null,
                 distribution_class_id: payload.form?.distribution_class_id || '',
                 year: payload.form?.year || new Date().getFullYear(),
                 country_id: payload.form?.country_id || '',
@@ -102,6 +103,12 @@ createApp({
         this.initializeLocations().then(() => {
             this.loadResidents();
         });
+
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('edit');
+        if (editId) {
+            this.loadEditForm(editId);
+        }
     },
     methods: {
         formatMoney(value) {
@@ -289,6 +296,7 @@ createApp({
             };
         },
         resetForm() {
+            this.form.id = null;
             this.form.distribution_class_id = '';
             this.form.recipient_ids = [];
             this.form.manual_recipients = [];
@@ -316,17 +324,78 @@ createApp({
                 });
             }
         },
+        async loadEditForm(id) {
+            if (!id) {
+                return;
+            }
+
+            try {
+                const response = await axios.get(`/mosque/charity-distributions/${id}/form`);
+                const payload = response.data || {};
+                this.applyPayload(payload);
+                this.openModal();
+            } catch (error) {
+                // ignore
+            }
+        },
+        applyPayload(payloadData) {
+            this.form = {
+                id: payloadData.form?.id || null,
+                distribution_class_id: payloadData.form?.distribution_class_id || '',
+                year: payloadData.form?.year || new Date().getFullYear(),
+                country_id: payloadData.form?.country_id || '',
+                province_id: payloadData.form?.province_id || '',
+                city_id: payloadData.form?.city_id || '',
+                district_id: payloadData.form?.district_id || '',
+                village_id: payloadData.form?.village_id || '',
+                citizens_association_id: payloadData.form?.citizens_association_id || '',
+                neighborhood_association_id: payloadData.form?.neighborhood_association_id || '',
+                use_manual_recipients: Boolean(payloadData.form?.use_manual_recipients),
+                recipient_ids: Array.isArray(payloadData.form?.recipient_ids) ? payloadData.form.recipient_ids : [],
+                manual_recipients: Array.isArray(payloadData.form?.manual_recipients) ? payloadData.form.manual_recipients : [],
+                officer_ids: Array.isArray(payloadData.form?.officer_ids) ? payloadData.form.officer_ids : [],
+            };
+            this.options = payloadData.options || this.options;
+            this.routes = payloadData.routes || this.routes;
+            this.errors = {};
+            this.showAdvancedLocation = false;
+            this.initializeLocations().then(() => {
+                this.loadResidents();
+            });
+        },
+        openModal() {
+            const element = document.getElementById('distribution-modal');
+            if (!element || !window.bootstrap) {
+                return;
+            }
+            window.bootstrap.Modal.getOrCreateInstance(element).show();
+        },
         async submitForm() {
             this.loading = true;
             this.errors = {};
             try {
-                const response = await axios.post(this.routes.store, this.buildPayload());
+                let response;
+                if (this.form.id && this.routes.update) {
+                    response = await axios.put(this.routes.update, this.buildPayload());
+                } else {
+                    response = await axios.post(this.routes.store, this.buildPayload());
+                }
                 if (response.data && response.data.success) {
                     this.notifySuccess(response.data.message || 'Saved');
                     this.closeModal();
                     this.resetForm();
-                    if (window.Livewire && typeof window.Livewire.dispatch === 'function') {
-                        window.Livewire.dispatch('distributionSaved');
+                    if (window.Livewire) {
+                        if (typeof window.Livewire.dispatch === 'function') {
+                            window.Livewire.dispatch('distributionSaved');
+                            window.Livewire.dispatch('refreshDistributionTable');
+                        }
+                        if (typeof window.Livewire.emit === 'function') {
+                            window.Livewire.emit('distributionSaved');
+                            window.Livewire.emit('refreshDistributionTable');
+                        }
+                        if (typeof window.Livewire.emitTo === 'function') {
+                            window.Livewire.emitTo('distributions.distribution-table', '$refresh');
+                        }
                     }
                 }
             } catch (error) {

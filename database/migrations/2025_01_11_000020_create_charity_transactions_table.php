@@ -32,10 +32,28 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('distribution_fund_sources', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('distribution_id')->nullable()->constrained('distributions')->nullOnDelete();
+            $table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('distribution_type_id')->nullable()->constrained('m_distribution_types')->nullOnDelete();
+            $table->foreignId('distribution_class_id')->nullable()->constrained('distribution_classes')->nullOnDelete();
+            $table->foreignId('neighborhood_association_id')->nullable()->constrained('loc_neighborhood_associations')->nullOnDelete();
+            $table->unsignedSmallInteger('year')->nullable();
+            $table->string('source_type')->default('charity');
+            $table->foreignId('charity_type_id')->nullable()->constrained('charity_types')->nullOnDelete();
+            $table->string('source_name')->nullable();
+            $table->decimal('amount_used', 18, 2);
+            $table->text('notes')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('distribution_fund_sources');
         Schema::dropIfExists('charity_transactions');
     }
 };

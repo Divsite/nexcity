@@ -25,6 +25,8 @@ class UserResidentProfile extends Model
 {
     use HasFactory;
 
+    public const HOUSE_PHOTO_PATH = 'resident-profiles/house-photos';
+
     protected $guarded = ['id'];
 
     protected $casts = [

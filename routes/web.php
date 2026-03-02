@@ -222,8 +222,20 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
         Route::resource('charity-transactions', CharityTransactionController::class);
         Route::get('charity-distributions/residents', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'residents'])
             ->name('charity-distributions.residents');
+        Route::get('charity-distributions/summary', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'summary'])
+            ->name('charity-distributions.summary');
+        Route::get('charity-distributions/{distribution}/form', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'form'])
+            ->name('charity-distributions.form');
+        Route::get('charity-distributions/fund-sources', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'fundSources'])
+            ->name('charity-distributions.fund-sources');
+        Route::post('charity-distributions/fund-sources', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'storeFundSource'])
+            ->name('charity-distributions.fund-sources.store');
+        Route::delete('charity-distributions/fund-sources/{fundSource}', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'deleteFundSource'])
+            ->name('charity-distributions.fund-sources.delete');
         Route::post('charity-distributions', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'store'])
             ->name('charity-distributions.store');
+        Route::put('charity-distributions/{distribution}', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'update'])
+            ->name('charity-distributions.update');
         Route::get('charity-distributions/{distribution}', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'show'])
             ->name('charity-distributions.show');
 

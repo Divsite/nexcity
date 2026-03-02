@@ -58,6 +58,9 @@
                             @{{ item.name }}
                         </option>
                     </select>
+                    <span class="invalid-feedback d-block" v-if="errors.neighborhood_association_id">
+                        <strong>@{{ errors.neighborhood_association_id[0] }}</strong>
+                    </span>
                 </div>
             </div>
         </div>
@@ -126,6 +129,9 @@
                             @{{ item.name }}
                         </option>
                     </select>
+                    <span class="invalid-feedback d-block" v-if="errors.neighborhood_association_id">
+                        <strong>@{{ errors.neighborhood_association_id[0] }}</strong>
+                    </span>
                 </div>
             </div>
         </div>

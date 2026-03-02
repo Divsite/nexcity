@@ -16,10 +16,18 @@
                                 · {{ __('messages.status') }}: {{ $distribution->status ? __('messages.' . $distribution->status) : '-' }}
                             </div>
                         </div>
-                        <a href="{{ route('mosque.charity-transactions.index') }}#charity-tab-distributions"
-                           class="btn btn-soft-secondary">
-                            <i class="ri-arrow-left-line align-bottom me-1"></i> {{ __('messages.back') }}
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('mosque.charity-transactions.index', ['tab' => 'distributions']) }}#charity-tab-distributions"
+                               class="btn btn-soft-secondary">
+                                <i class="ri-arrow-left-line align-bottom me-1"></i> {{ __('messages.back') }}
+                            </a>
+                            @can('edit-mosque-charity-distributions')
+                                <a href="{{ route('mosque.charity-transactions.index', ['tab' => 'distributions', 'edit' => $distribution->id]) }}#charity-tab-distributions"
+                                   class="btn btn-soft-primary">
+                                    <i class="ri-pencil-line align-bottom me-1"></i> {{ __('messages.edit') }}
+                                </a>
+                            @endcan
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -61,3 +69,6 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+@endpush

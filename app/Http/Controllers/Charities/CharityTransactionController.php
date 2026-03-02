@@ -44,7 +44,7 @@ class CharityTransactionController extends Controller
                 ->toArray(request()),
             'summaryPayload' => (new CharityTransactionSummaryResource($summaryPayload))
                 ->toArray(request()),
-            'distributionSummary' => $this->distributionService->distributionSummary(),
+            'distributionSummaryPayload' => $this->distributionService->summaryViewPayload(),
             'dailyRecapPrintUrl' => route('mosque.charity-transactions.daily-recap.print'),
         ]);
     }

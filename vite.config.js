@@ -45,6 +45,7 @@ export default defineConfig({
                 'resources/js/views/charities/form.js',
                 'resources/js/views/charities/summary.js',
                 'resources/js/views/distributions/form.js',
+                'resources/js/views/distributions/summary.js',
             ],
             refresh: true,
         }),

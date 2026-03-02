@@ -87,6 +87,11 @@ class Distribution extends Model
         return $this->hasMany(DistributionOfficer::class);
     }
 
+    public function fundSources(): HasMany
+    {
+        return $this->hasMany(DistributionFundSource::class);
+    }
+
     public function coupons(): HasMany
     {
         return $this->hasMany(DistributionCoupon::class);
