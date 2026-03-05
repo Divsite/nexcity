@@ -19,6 +19,7 @@ class CharityTypeModal extends Component
     public ?float $max_amount = null;
     public bool $is_rice = false;
     public ?float $total_rice = null;
+    public bool $use_multipliers = false;
     public ?string $description = null;
     public bool $is_active = true;
     public string $search = '';
@@ -52,7 +53,8 @@ class CharityTypeModal extends Component
             'min_amount' => ['nullable', 'numeric', 'min:0'],
             'max_amount' => ['nullable', 'numeric', 'min:0'],
             'is_rice' => ['boolean'],
-            'total_rice' => ['nullable', 'integer', 'min:0'],
+            'total_rice' => ['nullable', 'numeric', 'min:0'],
+            'use_multipliers' => ['boolean'],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ];
@@ -74,6 +76,7 @@ class CharityTypeModal extends Component
         $this->max_amount = $model->max_amount;
         $this->is_rice = (bool) $model->is_rice;
         $this->total_rice = $model->total_rice;
+        $this->use_multipliers = (bool) $model->use_multipliers;
         $this->description = $model->description;
         $this->is_active = (bool) $model->is_active;
 
@@ -153,6 +156,7 @@ class CharityTypeModal extends Component
         $this->max_amount = null;
         $this->is_rice = false;
         $this->total_rice = null;
+        $this->use_multipliers = false;
         $this->description = null;
         $this->is_active = true;
         $this->resetValidation();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Distributions;
 
+use App\Models\DistributionClasses\DistributionClass;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -39,10 +40,18 @@ class StoreDistributionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            $classId = $this->input('distribution_class_id');
+            $distributionClass = $classId ? DistributionClass::query()->find($classId) : null;
+            $isInternal = (bool) ($distributionClass?->is_internal);
             $useManual = $this->boolean('use_manual_recipients');
             $recipientIds = $this->input('recipient_ids', []);
             $manualRecipients = $this->input('manual_recipients', []);
             $neighborhood = $this->input('neighborhood_association_id');
+            $officerIds = $this->input('officer_ids', []);
+
+            if (empty($officerIds)) {
+                $validator->errors()->add('officer_ids', __('messages.recipients_required'));
+            }
 
             if ($useManual && empty($manualRecipients)) {
                 $validator->errors()->add('manual_recipients', __('messages.manual_recipients_required'));

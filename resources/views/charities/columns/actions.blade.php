@@ -11,6 +11,15 @@
                     </a>
                 </li>
             @endcan
+            @can('print-mosque-charity-transactions')
+                @if($row->status === 'paid')
+                    <li>
+                        <a href="{{ route('mosque.charity-transactions.invoice', $row->id) }}" target="_blank" class="dropdown-item">
+                            <i class="ri-printer-line align-bottom me-2 text-muted"></i> {{ __('messages.print_invoice') }}
+                        </a>
+                    </li>
+                @endif
+            @endcan
             @can('delete-mosque-charity-transactions')
                 <li>
                     <a class="dropdown-item" role="button" wire:click="$dispatch('triggerDelete',{{ $row->id }})">

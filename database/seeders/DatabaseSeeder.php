@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             OrganizationSeeder::class,
             UserMenuSeeder::class,
             OrganizationWhatsappGroupSeeder::class,
+            OrganizationOfficerSeeder::class,
         ]);
     }
 }

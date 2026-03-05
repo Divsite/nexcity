@@ -39,7 +39,11 @@ const app = createApp({
         formatRice(value) {
             const amount = Number(value || 0);
             const label = window.messages?.liter || 'liter';
-            return `${amount} ${label}`;
+            const formatted = new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+            }).format(Number.isNaN(amount) ? 0 : amount);
+            return `${formatted} ${label}`;
         },
         selectedName(id) {
             const selected = this.options.charity_types.find((item) => String(item.id) === String(id));

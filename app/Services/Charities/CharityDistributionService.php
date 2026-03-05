@@ -3,8 +3,10 @@
 namespace App\Services\Charities;
 
 use App\Models\Distributions\Distribution;
+use App\Models\Distributions\DistributionFundSetting;
 use App\Models\Distributions\DistributionFundSource;
 use App\Models\Distributions\DistributionRecipient;
+use App\Models\Distributions\DistributionRecipientStatusLog;
 use App\Models\Charities\CharityTransaction;
 use App\Services\Charities\CharityReceiptTotalsService;
 use App\Models\DistributionClasses\DistributionClass;
@@ -42,7 +44,8 @@ class CharityDistributionService
             ->when($context['organization_id'], fn (Builder $query) => $query->where('organization_id', $context['organization_id']))
             ->firstOrFail();
 
-        $useManual = ! empty($data['use_manual_recipients']);
+        $isInternal = (bool) $distributionClass->is_internal;
+        $useManual = $isInternal ? true : ! empty($data['use_manual_recipients']);
         $neighborhoodId = $useManual
             ? null
             : ($data['neighborhood_association_id'] ?? $organization->neighborhood_association_id);
@@ -86,6 +89,12 @@ class CharityDistributionService
             $payload[$field] = $data[$field] ?? $organization->{$field};
         }
 
+        if ($isInternal) {
+            foreach ($locationFields as $field) {
+                $payload[$field] = null;
+            }
+        }
+
         if ($useManual) {
             $payload['neighborhood_association_id'] = null;
         } else {
@@ -126,16 +135,77 @@ class CharityDistributionService
         ];
 
         $officerIds = collect($data['officer_ids'] ?? [])->filter()->unique()->values();
-        $recipientIds = collect($data['recipient_ids'] ?? [])->filter()->unique()->values();
-        $manualRecipients = collect($data['manual_recipients'] ?? [])
+        $recipientIds = $isInternal ? collect() : collect($data['recipient_ids'] ?? [])->filter()->unique()->values();
+        $manualRecipients = $isInternal ? collect() : collect($data['manual_recipients'] ?? [])
             ->map(fn ($item) => Arr::only($item, ['name', 'phone', 'address']))
             ->filter(fn ($item) => ! empty($item['name']))
             ->values();
 
-        return DB::transaction(function () use ($payload, $officerIds, $recipientIds, $manualRecipients, $distributionClass) {
+        if ($officerIds->isEmpty()) {
+            throw ValidationException::withMessages([
+                'officer_ids' => __('messages.recipients_required'),
+            ]);
+        }
+
+        if ($isInternal && $officerIds->isNotEmpty()) {
+            $duplicateOfficers = DistributionRecipient::query()
+                ->whereIn('officer_id', $officerIds)
+                ->where('distribution_class_id', '!=', $distributionClass->id)
+                ->whereHas('distribution', function (Builder $builder) use ($context, $data) {
+                    $builder->where('organization_id', $context['organization_id'])
+                        ->where('year', (int) ($data['year'] ?? now()->year));
+                })
+                ->exists();
+
+            if ($duplicateOfficers) {
+                throw ValidationException::withMessages([
+                    'officer_ids' => __('messages.officer_already_assigned'),
+                ]);
+            }
+        }
+
+        if (! $isInternal && $officerIds->isNotEmpty()) {
+            $neighborhoodId = $payload['neighborhood_association_id'] ?? null;
+            $duplicateOfficers = Distribution::query()
+                ->where('organization_id', $context['organization_id'])
+                ->where('year', (int) ($payload['year'] ?? now()->year))
+                ->when($neighborhoodId, fn (Builder $builder) => $builder->where('neighborhood_association_id', '!=', $neighborhoodId))
+                ->whereHas('officers', fn (Builder $builder) => $builder->whereIn('officer_id', $officerIds))
+                ->exists();
+
+            if ($duplicateOfficers) {
+                throw ValidationException::withMessages([
+                    'officer_ids' => __('messages.officer_already_assigned'),
+                ]);
+            }
+        }
+
+        if ($recipientIds->isNotEmpty() && ! $useManual) {
+            $neighborhoodId = $payload['neighborhood_association_id'] ?? null;
+            $duplicateRecipients = DistributionRecipient::query()
+                ->whereIn('resident_id', $recipientIds)
+                ->where('distribution_class_id', '!=', $distributionClass->id)
+                ->whereHas('distribution', function (Builder $builder) use ($context, $payload, $neighborhoodId) {
+                    $builder->where('organization_id', $context['organization_id'])
+                        ->where('year', (int) ($payload['year'] ?? now()->year));
+
+                    if ($neighborhoodId) {
+                        $builder->where('neighborhood_association_id', $neighborhoodId);
+                    }
+                })
+                ->exists();
+
+            if ($duplicateRecipients) {
+                throw ValidationException::withMessages([
+                    'recipient_ids' => __('messages.recipient_already_assigned'),
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($payload, $officerIds, $recipientIds, $manualRecipients, $distributionClass, $isInternal) {
             $distribution = Distribution::create($payload);
 
-            if ($officerIds->isNotEmpty()) {
+            if ($officerIds->isNotEmpty() && ! $isInternal) {
                 $rows = $officerIds->map(fn ($id) => [
                     'distribution_id' => $distribution->id,
                     'officer_id' => $id,
@@ -171,6 +241,31 @@ class CharityDistributionService
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                DB::table('distribution_recipients')->insert($rows->all());
+            }
+
+            if ($isInternal && $officerIds->isNotEmpty()) {
+                $officers = User::query()
+                    ->whereIn('id', $officerIds)
+                    ->get(['id', 'name'])
+                    ->keyBy('id');
+
+                $rows = $officerIds->map(function ($id) use ($distribution, $distributionClass, $officers) {
+                    return [
+                        'distribution_id' => $distribution->id,
+                        'resident_id' => null,
+                        'officer_id' => $id,
+                        'recipient_name' => $officers->get($id)?->name,
+                        'group_label' => null,
+                        'amount_money' => $distributionClass->get_money,
+                        'amount_rice' => $distributionClass->get_rice,
+                        'distribution_class_id' => $distributionClass->id,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                });
                 DB::table('distribution_recipients')->insert($rows->all());
             }
 
@@ -211,7 +306,8 @@ class CharityDistributionService
             ->when($context['organization_id'], fn (Builder $query) => $query->where('organization_id', $context['organization_id']))
             ->firstOrFail();
 
-        $useManual = ! empty($data['use_manual_recipients']);
+        $isInternal = (bool) $distributionClass->is_internal;
+        $useManual = $isInternal ? true : ! empty($data['use_manual_recipients']);
         $neighborhoodId = $useManual
             ? null
             : ($data['neighborhood_association_id'] ?? $organization->neighborhood_association_id);
@@ -256,6 +352,12 @@ class CharityDistributionService
             $payload[$field] = $data[$field] ?? $organization->{$field};
         }
 
+        if ($isInternal) {
+            foreach ($locationFields as $field) {
+                $payload[$field] = null;
+            }
+        }
+
         if ($useManual) {
             $payload['neighborhood_association_id'] = null;
         } else {
@@ -296,19 +398,83 @@ class CharityDistributionService
         ];
 
         $officerIds = collect($data['officer_ids'] ?? [])->filter()->unique()->values();
-        $recipientIds = collect($data['recipient_ids'] ?? [])->filter()->unique()->values();
-        $manualRecipients = collect($data['manual_recipients'] ?? [])
+        $recipientIds = $isInternal ? collect() : collect($data['recipient_ids'] ?? [])->filter()->unique()->values();
+        $manualRecipients = $isInternal ? collect() : collect($data['manual_recipients'] ?? [])
             ->map(fn ($item) => Arr::only($item, ['name', 'phone', 'address']))
             ->filter(fn ($item) => ! empty($item['name']))
             ->values();
 
-        return DB::transaction(function () use ($distribution, $payload, $officerIds, $recipientIds, $manualRecipients, $distributionClass) {
+        if ($officerIds->isEmpty()) {
+            throw ValidationException::withMessages([
+                'officer_ids' => __('messages.recipients_required'),
+            ]);
+        }
+
+        if ($isInternal && $officerIds->isNotEmpty()) {
+            $duplicateOfficers = DistributionRecipient::query()
+                ->whereIn('officer_id', $officerIds)
+                ->where('distribution_id', '!=', $distribution->id)
+                ->where('distribution_class_id', '!=', $distributionClass->id)
+                ->whereHas('distribution', function (Builder $builder) use ($context, $data) {
+                    $builder->where('organization_id', $context['organization_id'])
+                        ->where('year', (int) ($data['year'] ?? now()->year));
+                })
+                ->exists();
+
+            if ($duplicateOfficers) {
+                throw ValidationException::withMessages([
+                    'officer_ids' => __('messages.officer_already_assigned'),
+                ]);
+            }
+        }
+
+        if (! $isInternal && $officerIds->isNotEmpty()) {
+            $neighborhoodId = $payload['neighborhood_association_id'] ?? null;
+            $duplicateOfficers = Distribution::query()
+                ->where('organization_id', $context['organization_id'])
+                ->where('year', (int) ($payload['year'] ?? now()->year))
+                ->where('id', '!=', $distribution->id)
+                ->when($neighborhoodId, fn (Builder $builder) => $builder->where('neighborhood_association_id', '!=', $neighborhoodId))
+                ->whereHas('officers', fn (Builder $builder) => $builder->whereIn('officer_id', $officerIds))
+                ->exists();
+
+            if ($duplicateOfficers) {
+                throw ValidationException::withMessages([
+                    'officer_ids' => __('messages.officer_already_assigned'),
+                ]);
+            }
+        }
+
+        if ($recipientIds->isNotEmpty() && ! $useManual) {
+            $neighborhoodId = $payload['neighborhood_association_id'] ?? null;
+            $duplicateRecipients = DistributionRecipient::query()
+                ->whereIn('resident_id', $recipientIds)
+                ->where('distribution_id', '!=', $distribution->id)
+                ->where('distribution_class_id', '!=', $distributionClass->id)
+                ->whereHas('distribution', function (Builder $builder) use ($context, $payload, $neighborhoodId) {
+                    $builder->where('organization_id', $context['organization_id'])
+                        ->where('year', (int) ($payload['year'] ?? now()->year));
+
+                    if ($neighborhoodId) {
+                        $builder->where('neighborhood_association_id', $neighborhoodId);
+                    }
+                })
+                ->exists();
+
+            if ($duplicateRecipients) {
+                throw ValidationException::withMessages([
+                    'recipient_ids' => __('messages.recipient_already_assigned'),
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($distribution, $payload, $officerIds, $recipientIds, $manualRecipients, $distributionClass, $isInternal) {
             $distribution->update($payload);
 
             DB::table('distribution_officers')->where('distribution_id', $distribution->id)->delete();
             DB::table('distribution_recipients')->where('distribution_id', $distribution->id)->delete();
 
-            if ($officerIds->isNotEmpty()) {
+            if ($officerIds->isNotEmpty() && ! $isInternal) {
                 $rows = $officerIds->map(fn ($id) => [
                     'distribution_id' => $distribution->id,
                     'officer_id' => $id,
@@ -347,6 +513,31 @@ class CharityDistributionService
                 DB::table('distribution_recipients')->insert($rows->all());
             }
 
+            if ($isInternal && $officerIds->isNotEmpty()) {
+                $officers = User::query()
+                    ->whereIn('id', $officerIds)
+                    ->get(['id', 'name'])
+                    ->keyBy('id');
+
+                $rows = $officerIds->map(function ($id) use ($distribution, $distributionClass, $officers) {
+                    return [
+                        'distribution_id' => $distribution->id,
+                        'resident_id' => null,
+                        'officer_id' => $id,
+                        'recipient_name' => $officers->get($id)?->name,
+                        'group_label' => null,
+                        'amount_money' => $distributionClass->get_money,
+                        'amount_rice' => $distributionClass->get_rice,
+                        'distribution_class_id' => $distributionClass->id,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                });
+                DB::table('distribution_recipients')->insert($rows->all());
+            }
+
             activity(__('messages.distributions'))
                 ->causedBy(auth()->user())
                 ->performedOn($distribution)
@@ -358,6 +549,35 @@ class CharityDistributionService
 
     public function residents(array $data): array
     {
+        $context = $this->partnerContext();
+        $assignedMap = collect();
+        $year = isset($data['year']) ? (int) $data['year'] : null;
+        $neighborhoodId = $data['neighborhood_association_id'] ?? null;
+
+        if ($year && $neighborhoodId && ! empty($context['organization_id'])) {
+            $assignedQuery = DistributionRecipient::query()
+                ->select('distribution_recipients.resident_id', 'm_distribution_class_sources.name as class_name', 'distribution_recipients.distribution_class_id')
+                ->join('distributions', 'distributions.id', '=', 'distribution_recipients.distribution_id')
+                ->leftJoin('distribution_classes', 'distribution_classes.id', '=', 'distribution_recipients.distribution_class_id')
+                ->leftJoin('m_distribution_class_sources', 'm_distribution_class_sources.id', '=', 'distribution_classes.distribution_class_source_id')
+                ->where('distributions.organization_id', $context['organization_id'])
+                ->where('distributions.year', $year)
+                ->where('distributions.neighborhood_association_id', $neighborhoodId);
+
+            if (! empty($data['distribution_id'])) {
+                $assignedQuery->where('distribution_recipients.distribution_id', '!=', (int) $data['distribution_id']);
+            }
+
+            $assignedMap = $assignedQuery->get()->mapWithKeys(function ($row) {
+                return [
+                    (int) $row->resident_id => [
+                        'class_name' => $row->class_name,
+                        'class_id' => (int) ($row->distribution_class_id ?? 0),
+                    ],
+                ];
+            });
+        }
+
         $query = User::query()
             ->select('users.id', 'users.name')
             ->whereHas('residentProfile', function (Builder $profile) use ($data) {
@@ -382,10 +602,15 @@ class CharityDistributionService
             $query->where('users.name', 'like', '%' . $data['search'] . '%');
         }
 
-        return $query->limit(200)->get()->map(function (User $user) {
+        $selectedClassId = isset($data['distribution_class_id']) ? (int) $data['distribution_class_id'] : null;
+
+        return $query->limit(200)->get()->map(function (User $user) use ($assignedMap, $selectedClassId) {
             $profile = $user->residentProfile;
             $rt = $profile?->neighborhoodAssociation?->number;
             $rw = $profile?->citizensAssociation?->number;
+            $assigned = $assignedMap->get((int) $user->id);
+            $assignedClassId = $assigned['class_id'] ?? null;
+            $assignedName = $assigned['class_name'] ?? null;
 
             return [
                 'id' => $user->id,
@@ -393,6 +618,9 @@ class CharityDistributionService
                 'rt' => $rt,
                 'rw' => $rw,
                 'address' => $profile?->address_line,
+                'assigned_class_id' => $assignedClassId,
+                'assigned_class_name' => $assignedName,
+                'disabled' => $assignedClassId ? ($selectedClassId ? $assignedClassId !== $selectedClassId : true) : false,
             ];
         })->toArray();
     }
@@ -410,6 +638,9 @@ class CharityDistributionService
         $year = (int) ($distribution?->year ?? now()->year);
         $distributionClassId = $distribution
             ? $distribution->recipients()->whereNotNull('distribution_class_id')->value('distribution_class_id')
+            : null;
+        $distributionClass = $distributionClassId
+            ? DistributionClass::query()->find($distributionClassId)
             : null;
         $manualRecipients = $distribution
             ? $distribution->recipients()
@@ -431,7 +662,9 @@ class CharityDistributionService
                 ->toArray()
             : [];
         $officerIds = $distribution
-            ? $distribution->officers()->pluck('officer_id')->values()->toArray()
+            ? ($distributionClass?->is_internal
+                ? $distribution->recipients()->pluck('officer_id')->filter()->values()->toArray()
+                : $distribution->officers()->pluck('officer_id')->values()->toArray())
             : [];
         $useManual = $distribution ? (! empty($manualRecipients) && empty($residentIds)) : false;
 
@@ -447,6 +680,7 @@ class CharityDistributionService
                 'year' => $item->year,
                 'get_money' => $item->get_money,
                 'get_rice' => $item->get_rice,
+                'is_internal' => (bool) $item->is_internal,
             ])
             ->values()
             ->toArray();
@@ -604,7 +838,7 @@ class CharityDistributionService
             ->withCount([
                 'recipients',
                 'recipients as distributed_count' => fn (Builder $builder) => $builder->where('status', 'distributed'),
-                'recipients as failed_count' => fn (Builder $builder) => $builder->where('status', 'failed'),
+                'recipients as failed_count' => fn (Builder $builder) => $builder->whereIn('status', ['failed', 'redirected']),
             ]);
 
         if (! empty($context['organization_id'])) {
@@ -683,6 +917,97 @@ class CharityDistributionService
 
         $formatDecimal = fn (float $value) => \Illuminate\Support\Number::format($value, 2, 2, app()->getLocale());
 
+        $incomeTotals = $this->incomeTotalsForRiceTypes($year, $context['organization_id'] ?? null);
+        $incomeMoney = (float) ($incomeTotals['total_money'] ?? 0);
+        $incomeRice = (float) ($incomeTotals['total_rice'] ?? 0);
+        $shortageMoney = max($totalMoney - $incomeMoney, 0);
+        $shortageRice = max($totalRice - $incomeRice, 0);
+        $shortagePerRecipient = $totalRecipients > 0 ? ($shortageMoney / $totalRecipients) : 0;
+        $adjustYear = $year ?: (int) now()->year;
+        $suggestedAdjustments = [];
+        $notDistributedRecipients = [];
+        $notDistributedTotal = 0;
+
+        if ($shortagePerRecipient > 0) {
+            $adjustClasses = DistributionClass::query()
+                ->with('source')
+                ->when($context['organization_id'] ?? null, fn (Builder $query) => $query->where('organization_id', $context['organization_id']))
+                ->where('year', $adjustYear)
+                ->when($distributionClassId, fn (Builder $query) => $query->where('id', $distributionClassId))
+                ->orderBy('id')
+                ->get();
+
+            $suggestedAdjustments = $adjustClasses->map(function (DistributionClass $class) use ($shortagePerRecipient, $formatMoney) {
+                $current = (float) ($class->get_money ?? 0);
+                $suggested = max($current - $shortagePerRecipient, 0);
+
+                return [
+                    'id' => $class->id,
+                    'name' => $class->source?->name ?? '-',
+                    'current_money' => $current,
+                    'current_money_label' => $formatMoney($current),
+                    'suggested_money' => $suggested,
+                    'suggested_money_label' => $formatMoney($suggested),
+                ];
+            })->values()->toArray();
+        }
+
+        $notDistributedQuery = DistributionRecipientStatusLog::query()
+            ->where('to_status', 'failed')
+            ->whereHas('recipient', function (Builder $builder) use ($distributionClassId, $year, $neighborhoodId) {
+                $builder->whereIn('status', ['failed', 'redirected']);
+
+                if ($distributionClassId) {
+                    $builder->where('distribution_class_id', $distributionClassId);
+                }
+
+                $builder->whereHas('distribution', function (Builder $sub) use ($year, $neighborhoodId) {
+                    if ($year) {
+                        $sub->where('year', $year);
+                    }
+
+                    if ($neighborhoodId) {
+                        $sub->where('neighborhood_association_id', $neighborhoodId);
+                    }
+                });
+            })
+            ->whereHas('recipient.distribution', function (Builder $builder) use ($context, $canViewAll) {
+                if (! empty($context['organization_id'])) {
+                    $builder->where('organization_id', $context['organization_id']);
+                }
+
+                if (! $canViewAll) {
+                    $builder->whereHas('officers', fn (Builder $query) => $query->where('officer_id', auth()->id()));
+                }
+            })
+            ->with(['recipient.resident', 'recipient.distributionClass.source', 'recipient.distribution'])
+            ->orderByDesc('created_at');
+
+        $notDistributedLogs = $notDistributedQuery->get()
+            ->groupBy('distribution_recipient_id')
+            ->map(fn ($logs) => $logs->first())
+            ->values();
+
+        $notDistributedTotal = $notDistributedLogs->count();
+
+        $notDistributedRecipients = $notDistributedLogs->map(function (DistributionRecipientStatusLog $log) {
+            $recipient = $log->recipient;
+            $distribution = $recipient?->distribution;
+            $className = $recipient?->distributionClass?->source?->name;
+
+            return [
+                'id' => $recipient?->id,
+                'name' => $recipient?->resident?->name ?? $recipient?->recipient_name ?? '-',
+                'class_name' => $className ?? '-',
+                'status' => $recipient?->status ?? '-',
+                'status_label' => $recipient?->status ? __('messages.' . $recipient->status) : '-',
+                'status_reason' => $log->status_reason ? __('messages.' . $log->status_reason) : '-',
+                'status_note' => $log->status_note ?? '-',
+                'rt' => $distribution?->neighborhoodAssociation?->number,
+                'rw' => $distribution?->citizensAssociation?->number,
+            ];
+        })->values()->toArray();
+
         return [
             'total_recipients' => $totalRecipients,
             'distributed_recipients' => $distributedRecipients,
@@ -700,6 +1025,19 @@ class CharityDistributionService
             'remaining_money_label' => $formatMoney(max($totalMoney - $distributedMoney, 0)),
             'remaining_rice' => max($totalRice - $distributedRice, 0),
             'remaining_rice_label' => $formatDecimal(max($totalRice - $distributedRice, 0)),
+            'income_money' => $incomeMoney,
+            'income_money_label' => $formatMoney($incomeMoney),
+            'income_rice' => $incomeRice,
+            'income_rice_label' => $formatDecimal($incomeRice),
+            'shortage_money' => $shortageMoney,
+            'shortage_money_label' => $formatMoney($shortageMoney),
+            'shortage_rice' => $shortageRice,
+            'shortage_rice_label' => $formatDecimal($shortageRice),
+            'shortage_money_per_recipient' => $shortagePerRecipient,
+            'shortage_money_per_recipient_label' => $formatMoney($shortagePerRecipient),
+            'suggested_adjustments' => $suggestedAdjustments,
+            'not_distributed_recipients' => $notDistributedRecipients,
+            'not_distributed_total' => $notDistributedTotal,
         ];
     }
 
@@ -818,6 +1156,15 @@ class CharityDistributionService
             ->groupBy('charity_type_id')
             ->pluck('total_used', 'charity_type_id');
 
+        $allUsedByTypeRice = DistributionFundSource::query()
+            ->where('source_type', 'charity')
+            ->when($context['organization_id'] ?? null, fn (Builder $builder) => $builder->where('organization_id', $context['organization_id']))
+            ->where('year', $year)
+            ->when($distributionTypeId, fn (Builder $builder) => $builder->where('distribution_type_id', $distributionTypeId))
+            ->select('charity_type_id', DB::raw('SUM(amount_used_rice) as total_used'))
+            ->groupBy('charity_type_id')
+            ->pluck('total_used', 'charity_type_id');
+
         $currentUsedByType = $this->applyFundSourceFilters(
             DistributionFundSource::query()->where('source_type', 'charity'),
             $distributionClassId,
@@ -828,8 +1175,22 @@ class CharityDistributionService
             ->groupBy('charity_type_id')
             ->pluck('total_used', 'charity_type_id');
 
+        $currentUsedByTypeRice = $this->applyFundSourceFilters(
+            DistributionFundSource::query()->where('source_type', 'charity'),
+            $distributionClassId,
+            $year,
+            $neighborhoodId
+        )
+            ->select('charity_type_id', DB::raw('SUM(amount_used_rice) as total_used'))
+            ->groupBy('charity_type_id')
+            ->pluck('total_used', 'charity_type_id');
+
         $usedByType = $allUsedByType->mapWithKeys(fn ($value, $key) => [
             $key => max((float) $value - (float) ($currentUsedByType[$key] ?? 0), 0),
+        ]);
+
+        $usedByTypeRice = $allUsedByTypeRice->mapWithKeys(fn ($value, $key) => [
+            $key => max((float) $value - (float) ($currentUsedByTypeRice[$key] ?? 0), 0),
         ]);
 
         $remainingByType = $types->mapWithKeys(function (CharityType $type) use ($totalsByType, $usedByType) {
@@ -842,6 +1203,21 @@ class CharityDistributionService
             ];
         });
 
+        $remainingByTypeRice = $types->mapWithKeys(function (CharityType $type) use ($totalsByType, $usedByTypeRice) {
+            $totalRice = (float) ($totalsByType[$type->id]['total_rice'] ?? 0);
+            $usedRice = (float) ($usedByTypeRice[$type->id] ?? 0);
+            $remaining = max($totalRice - $usedRice, 0);
+
+            return [
+                $type->id => $remaining,
+            ];
+        });
+
+        $setting = $this->resolveFundSetting($distributionClassId, $year, $neighborhoodId);
+        $priorityIds = $setting?->priority_charity_type_ids ?? $this->defaultPriorityTypeIds($types);
+        $priorityIds = collect($priorityIds)->filter()->values()->toArray();
+        $enforcePriority = $setting?->enforce_priority ?? ! empty($priorityIds);
+
         $fundSources = $this->applyFundSourceFilters(
             DistributionFundSource::query(),
             $distributionClassId,
@@ -851,11 +1227,14 @@ class CharityDistributionService
             ->with('charityType.source')
             ->orderBy('id', 'desc')
             ->get()
-            ->map(function (DistributionFundSource $source) use ($remainingByType) {
+            ->map(function (DistributionFundSource $source) use ($remainingByType, $remainingByTypeRice) {
                 $remaining = null;
+                $remainingRice = null;
                 if ($source->source_type === 'charity') {
                     $available = (float) ($remainingByType[$source->charity_type_id] ?? 0);
                     $remaining = max($available - (float) $source->amount_used, 0);
+                    $availableRice = (float) ($remainingByTypeRice[$source->charity_type_id] ?? 0);
+                    $remainingRice = max($availableRice - (float) $source->amount_used_rice, 0);
                 }
 
                 return [
@@ -865,8 +1244,12 @@ class CharityDistributionService
                     'source_name' => $source->source_name ?? $source->charityType?->source?->name,
                     'amount_used' => (float) $source->amount_used,
                     'amount_used_label' => $this->formatMoney((float) $source->amount_used),
+                    'amount_used_rice' => (float) $source->amount_used_rice,
+                    'amount_used_rice_label' => $this->formatDecimal((float) $source->amount_used_rice),
                     'remaining_amount' => $remaining,
                     'remaining_amount_label' => $remaining === null ? '-' : $this->formatMoney($remaining),
+                    'remaining_rice' => $remainingRice,
+                    'remaining_rice_label' => $remainingRice === null ? '-' : $this->formatDecimal($remainingRice),
                     'notes' => $source->notes,
                 ];
             })
@@ -886,18 +1269,23 @@ class CharityDistributionService
             ->map(fn ($items) => [
                 'source_name' => $items->first()['source_name'] ?? null,
                 'total_amount' => collect($items)->sum('amount_used'),
+                'total_rice' => collect($items)->sum('amount_used_rice'),
             ])
             ->first();
 
         $totalUsed = collect($fundSources)->sum('amount_used');
+        $totalUsedRice = collect($fundSources)->sum('amount_used_rice');
 
         return [
             'fund_sources' => $fundSources,
             'options' => [
-                'charity_types' => $types->map(function (CharityType $type) use ($totalsByType, $usedByType) {
+                'charity_types' => $types->map(function (CharityType $type) use ($totalsByType, $usedByType, $usedByTypeRice) {
                     $totalMoney = (float) ($totalsByType[$type->id]['total_money'] ?? 0);
                     $usedMoney = (float) ($usedByType[$type->id] ?? 0);
                     $remaining = max($totalMoney - $usedMoney, 0);
+                    $totalRice = (float) ($totalsByType[$type->id]['total_rice'] ?? 0);
+                    $usedRice = (float) ($usedByTypeRice[$type->id] ?? 0);
+                    $remainingRice = max($totalRice - $usedRice, 0);
 
                     return [
                         'id' => $type->id,
@@ -908,14 +1296,22 @@ class CharityDistributionService
                         'used_money_label' => $this->formatMoney($usedMoney),
                         'remaining_money' => $remaining,
                         'remaining_money_label' => $this->formatMoney($remaining),
-                        'total_rice' => (float) ($totalsByType[$type->id]['total_rice'] ?? 0),
+                        'total_rice' => $totalRice,
+                        'total_rice_label' => $this->formatDecimal($totalRice),
+                        'used_rice' => $usedRice,
+                        'used_rice_label' => $this->formatDecimal($usedRice),
+                        'remaining_rice' => $remainingRice,
+                        'remaining_rice_label' => $this->formatDecimal($remainingRice),
                     ];
                 })->values()->toArray(),
             ],
             'selection' => [
                 'charity_type_ids' => $selectedIds,
+                'priority_charity_type_ids' => $priorityIds,
+                'enforce_priority' => $enforcePriority,
                 'other_source_name' => is_array($otherSource) ? ($otherSource['source_name'] ?? null) : null,
                 'other_source_amount' => is_array($otherSource) ? (float) ($otherSource['total_amount'] ?? 0) : 0,
+                'other_source_rice' => is_array($otherSource) ? (float) ($otherSource['total_rice'] ?? 0) : 0,
             ],
             'summary' => [
                 'required_money' => $requiredTotals['total_money'],
@@ -924,8 +1320,12 @@ class CharityDistributionService
                 'required_rice_label' => $this->formatDecimal($requiredTotals['total_rice']),
                 'used_money' => $totalUsed,
                 'used_money_label' => $this->formatMoney($totalUsed),
+                'used_rice' => $totalUsedRice,
+                'used_rice_label' => $this->formatDecimal($totalUsedRice),
                 'remaining_money' => max(0, $requiredTotals['total_money'] - $totalUsed),
                 'remaining_money_label' => $this->formatMoney(max(0, $requiredTotals['total_money'] - $totalUsed)),
+                'remaining_rice' => max(0, $requiredTotals['total_rice'] - $totalUsedRice),
+                'remaining_rice_label' => $this->formatDecimal(max(0, $requiredTotals['total_rice'] - $totalUsedRice)),
             ],
         ];
     }
@@ -943,16 +1343,29 @@ class CharityDistributionService
             ->filter()
             ->values()
             ->toArray();
+        $priorityIds = collect($data['priority_charity_type_ids'] ?? [])
+            ->filter()
+            ->values()
+            ->toArray();
+        $enforcePriority = (bool) ($data['enforce_priority'] ?? ! empty($priorityIds));
+
+        if ($enforcePriority && ! empty($priorityIds)) {
+            $charityTypeIds = collect(array_merge($priorityIds, $charityTypeIds))
+                ->unique()
+                ->values()
+                ->toArray();
+        }
         $otherName = $data['other_source_name'] ?? null;
         $otherAmount = (float) ($data['other_source_amount'] ?? 0);
+        $otherRice = (float) ($data['other_source_rice'] ?? 0);
 
-        if (empty($charityTypeIds) && $otherAmount <= 0) {
+        if (empty($charityTypeIds) && $otherAmount <= 0 && $otherRice <= 0) {
             throw ValidationException::withMessages([
                 'charity_type_ids' => __('validation.required', ['attribute' => __('messages.charity_type')]),
             ]);
         }
 
-        if ($otherAmount > 0 && empty($otherName)) {
+        if (($otherAmount > 0 || $otherRice > 0) && empty($otherName)) {
             throw ValidationException::withMessages([
                 'other_source_name' => __('validation.required', ['attribute' => __('messages.source_name')]),
             ]);
@@ -960,23 +1373,30 @@ class CharityDistributionService
 
         $payload = $this->fundSourcesPayload($distributionClassId, $year, $neighborhoodId);
         $types = collect($payload['options']['charity_types'] ?? []);
+        $availableTypeIds = $types->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        $charityTypeIds = collect($charityTypeIds)->filter(fn ($id) => in_array((int) $id, $availableTypeIds, true))->values()->toArray();
+        $priorityIds = collect($priorityIds)->filter(fn ($id) => in_array((int) $id, $availableTypeIds, true))->values()->toArray();
         $requiredMoney = (float) ($payload['summary']['required_money'] ?? 0);
+        $requiredRice = (float) ($payload['summary']['required_rice'] ?? 0);
 
-        $availableMap = $types->mapWithKeys(fn ($item) => [
+        $availableMoneyMap = $types->mapWithKeys(fn ($item) => [
             (int) $item['id'] => (float) ($item['remaining_money'] ?? 0),
         ]);
+        $availableRiceMap = $types->mapWithKeys(fn ($item) => [
+            (int) $item['id'] => (float) ($item['remaining_rice'] ?? 0),
+        ]);
 
-        $remaining = $requiredMoney;
+        $remainingMoney = $requiredMoney;
+        $remainingRice = $requiredRice;
         $rows = [];
         $distributionTypeId = DistributionType::query()->where('slug', 'zakat')->value('id');
 
         foreach ($charityTypeIds as $typeId) {
-            $available = (float) ($availableMap[$typeId] ?? 0);
-            if ($available <= 0 || $remaining <= 0) {
-                continue;
-            }
-            $use = min($available, $remaining);
-            if ($use <= 0) {
+            $availableMoney = (float) ($availableMoneyMap[$typeId] ?? 0);
+            $availableRice = (float) ($availableRiceMap[$typeId] ?? 0);
+            $useMoney = $remainingMoney > 0 ? min($availableMoney, $remainingMoney) : 0;
+            $useRice = $remainingRice > 0 ? min($availableRice, $remainingRice) : 0;
+            if ($useMoney <= 0 && $useRice <= 0) {
                 continue;
             }
             $rows[] = [
@@ -989,17 +1409,19 @@ class CharityDistributionService
                 'source_type' => 'charity',
                 'charity_type_id' => $typeId,
                 'source_name' => null,
-                'amount_used' => $use,
+                'amount_used' => $useMoney,
+                'amount_used_rice' => $useRice,
                 'notes' => null,
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
-            $remaining -= $use;
+            $remainingMoney -= $useMoney;
+            $remainingRice -= $useRice;
         }
 
-        if ($remaining > 0 && $otherAmount > 0) {
-            $use = min($otherAmount, $remaining);
+        if ($remainingMoney > 0 && $otherAmount > 0) {
+            $use = min($otherAmount, $remainingMoney);
             $rows[] = [
                 'distribution_id' => null,
                 'organization_id' => $context['organization_id'] ?? null,
@@ -1011,21 +1433,50 @@ class CharityDistributionService
                 'charity_type_id' => null,
                 'source_name' => $otherName,
                 'amount_used' => $use,
+                'amount_used_rice' => 0,
                 'notes' => null,
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
-            $remaining -= $use;
+            $remainingMoney -= $use;
         }
 
-        if ($remaining > 0) {
+        if ($remainingRice > 0 && $otherRice > 0) {
+            $useRice = min($otherRice, $remainingRice);
+            $rows[] = [
+                'distribution_id' => null,
+                'organization_id' => $context['organization_id'] ?? null,
+                'distribution_type_id' => $distributionTypeId,
+                'distribution_class_id' => $distributionClassId,
+                'neighborhood_association_id' => $neighborhoodId,
+                'year' => $year,
+                'source_type' => 'other',
+                'charity_type_id' => null,
+                'source_name' => $otherName,
+                'amount_used' => 0,
+                'amount_used_rice' => $useRice,
+                'notes' => null,
+                'created_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $remainingRice -= $useRice;
+        }
+
+        if ($remainingMoney > 0) {
             throw ValidationException::withMessages([
                 'other_source_amount' => __('messages.fund_sources_insufficient'),
             ]);
         }
 
-        DB::transaction(function () use ($distributionClassId, $year, $neighborhoodId, $rows) {
+        if ($remainingRice > 0) {
+            throw ValidationException::withMessages([
+                'other_source_rice' => __('messages.fund_sources_rice_insufficient'),
+            ]);
+        }
+
+        DB::transaction(function () use ($distributionClassId, $year, $neighborhoodId, $rows, $priorityIds, $enforcePriority) {
             $this->applyFundSourceFilters(
                 DistributionFundSource::query(),
                 $distributionClassId,
@@ -1036,6 +1487,8 @@ class CharityDistributionService
             if (! empty($rows)) {
                 DistributionFundSource::query()->insert($rows);
             }
+
+            $this->storeFundSetting($distributionClassId, $year, $neighborhoodId, $priorityIds, $enforcePriority);
         });
 
         return DistributionFundSource::query()
@@ -1097,6 +1550,47 @@ class CharityDistributionService
         return $query;
     }
 
+    protected function resolveFundSetting(?int $distributionClassId, int $year, ?int $neighborhoodId): ?DistributionFundSetting
+    {
+        $context = $this->partnerContext();
+        $distributionTypeId = DistributionType::query()->where('slug', 'zakat')->value('id');
+
+        return DistributionFundSetting::query()
+            ->when($context['organization_id'] ?? null, fn (Builder $builder) => $builder->where('organization_id', $context['organization_id']))
+            ->where('year', $year)
+            ->when($distributionTypeId, fn (Builder $builder) => $builder->where('distribution_type_id', $distributionTypeId))
+            ->when($distributionClassId, fn (Builder $builder) => $builder->where('distribution_class_id', $distributionClassId), fn (Builder $builder) => $builder->whereNull('distribution_class_id'))
+            ->when($neighborhoodId, fn (Builder $builder) => $builder->where('neighborhood_association_id', $neighborhoodId), fn (Builder $builder) => $builder->whereNull('neighborhood_association_id'))
+            ->first();
+    }
+
+    protected function storeFundSetting(?int $distributionClassId, int $year, ?int $neighborhoodId, array $priorityIds, bool $enforcePriority): DistributionFundSetting
+    {
+        $context = $this->partnerContext();
+        $distributionTypeId = DistributionType::query()->where('slug', 'zakat')->value('id');
+
+        return DistributionFundSetting::updateOrCreate([
+            'organization_id' => $context['organization_id'] ?? null,
+            'distribution_type_id' => $distributionTypeId,
+            'distribution_class_id' => $distributionClassId,
+            'neighborhood_association_id' => $neighborhoodId,
+            'year' => $year,
+        ], [
+            'priority_charity_type_ids' => array_values($priorityIds),
+            'enforce_priority' => $enforcePriority,
+            'created_by' => auth()->id(),
+        ]);
+    }
+
+    protected function defaultPriorityTypeIds($types): array
+    {
+        return collect($types)
+            ->filter(fn (CharityType $type) => in_array($type->source?->slug, ['zakat-fitrah', 'fidyah'], true))
+            ->pluck('id')
+            ->values()
+            ->toArray();
+    }
+
     protected function formatMoney(float $amount): string
     {
         $currency = strtoupper((string) config('money.defaultCurrency', 'IDR'));
@@ -1105,6 +1599,33 @@ class CharityDistributionService
         } catch (\Throwable $exception) {
             return \Cknow\Money\Money::IDR($amount)->format(app()->getLocale());
         }
+    }
+
+    protected function incomeTotalsForRiceTypes(?int $year, ?int $organizationId): array
+    {
+        $year = (int) ($year ?: now()->year);
+
+        $typeIds = CharityType::query()
+            ->with('source')
+            ->where('year', $year)
+            ->when($organizationId, fn (Builder $query) => $query->where('organization_id', $organizationId))
+            ->whereHas('source', fn (Builder $query) => $query->whereIn('slug', ['zakat-fitrah', 'fidyah']))
+            ->pluck('id')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($typeIds)) {
+            return ['total_money' => 0.0, 'total_rice' => 0.0];
+        }
+
+        $query = CharityTransaction::query()
+            ->forOrganization($organizationId)
+            ->paid()
+            ->createdInYear($year)
+            ->whereIn('charity_type_id', $typeIds);
+
+        return app(CharityReceiptTotalsService::class)->totalsForQuery($query);
     }
 
     protected function formatDecimal(float $value): string

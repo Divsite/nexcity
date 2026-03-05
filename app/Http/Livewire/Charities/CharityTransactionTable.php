@@ -194,6 +194,33 @@ class CharityTransactionTable extends DataTableComponent
         return to_route('mosque.charity-transactions.index');
     }
 
+    public function updateStatus(int $id, string $status): void
+    {
+        if (! auth()->user()?->can('edit-mosque-charity-transactions')) {
+            abort(403);
+        }
+
+        if (! in_array($status, ['draft', 'paid', 'cancelled'], true)) {
+            return;
+        }
+
+        $model = CharityTransaction::query()->find($id);
+        if (! $model) {
+            return;
+        }
+
+        if ($this->contextOrganizationId && $model->organization_id !== $this->contextOrganizationId) {
+            abort(403);
+        }
+
+        $model->update(['status' => $status]);
+        $this->totalsCache = null;
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => __('messages.updated_successfully'),
+        ]);
+    }
+
     public function bulkActions(): array
     {
         return [

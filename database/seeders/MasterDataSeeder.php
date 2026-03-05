@@ -205,9 +205,11 @@ class MasterDataSeeder extends Seeder
         }
 
         $distributionClassSources = [
-            ['name' => 'Amil', 'slug' => 'amil'],
-            ['name' => 'Fakir Miskin', 'slug' => 'fakir-miskin'],
-            ['name' => 'Yatim/Piatu', 'slug' => 'yatim-piatu'],
+            ['name' => 'Amil Golongan 1', 'slug' => 'amil-gol-1'],
+            ['name' => 'Amil Golongan 2', 'slug' => 'amil-gol-2'],
+            ['name' => 'Amil Golongan 3', 'slug' => 'amil-gol-3'],
+            ['name' => 'Fakir Miskin Gol 1', 'slug' => 'fakir-miskin-gol-1'],
+            ['name' => 'Fakir Miskin Gol 2', 'slug' => 'fakir-miskin-gol-2'],
         ];
 
         foreach ($distributionClassSources as $item) {
@@ -222,9 +224,11 @@ class MasterDataSeeder extends Seeder
         }
 
         $distributionClasses = [
-            ['source' => 'amil', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1],
-            ['source' => 'fakir-miskin', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1],
-            ['source' => 'yatim-piatu', 'year' => 2026, 'get_money' => 50000, 'get_rice' => 1],
+            ['source' => 'amil-gol-1', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1],
+            ['source' => 'amil-gol-2', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1],
+            ['source' => 'amil-gol-3', 'year' => 2026, 'get_money' => 150000, 'get_rice' => 1],
+            ['source' => 'fakir-miskin-gol-1', 'year' => 2026, 'get_money' => 100000, 'get_rice' => 1],
+            ['source' => 'fakir-miskin-gol-2', 'year' => 2026, 'get_money' => 50000, 'get_rice' => 1],
         ];
 
         $organizations = Organization::query()

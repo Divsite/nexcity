@@ -197,6 +197,7 @@ return [
         'package_payers.*.payer_phone' => 'package payer phone',
         'package_payers.*.payer_email' => 'package payer email',
         'package_payers.*.total_money' => 'package payer total money',
+        'package_payers.*.total_rice' => 'package payer total rice',
         'detail.is_rice' => 'include rice payment',
         'distribution_class_id' => 'distribution class',
         'officer_ids' => 'officers',

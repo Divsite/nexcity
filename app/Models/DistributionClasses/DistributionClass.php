@@ -16,6 +16,13 @@ class DistributionClass extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'get_money' => 'float',
+        'get_rice' => 'float',
+        'is_internal' => 'boolean',
+        'is_active' => 'boolean',
+    ];
+
     public function source(): BelongsTo
     {
         return $this->belongsTo(DistributionClassSource::class, 'distribution_class_source_id');

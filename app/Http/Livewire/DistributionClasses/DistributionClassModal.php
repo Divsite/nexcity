@@ -16,7 +16,8 @@ class DistributionClassModal extends Component
     public ?int $distribution_class_source_id = null;
     public int $year;
     public ?float $get_money = null;
-    public ?int $get_rice = null;
+    public ?float $get_rice = null;
+    public bool $is_internal = false;
     public ?string $description = null;
     public bool $is_active = true;
     public string $search = '';
@@ -48,9 +49,10 @@ class DistributionClassModal extends Component
             'distribution_class_source_id' => ['required', 'exists:m_distribution_class_sources,id'],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'get_money' => ['nullable', 'numeric', 'min:0'],
-            'get_rice' => ['nullable', 'integer', 'min:0'],
+            'get_rice' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
+            'is_internal' => ['boolean'],
         ];
     }
 
@@ -70,6 +72,7 @@ class DistributionClassModal extends Component
         $this->get_rice = $model->get_rice;
         $this->description = $model->description;
         $this->is_active = (bool) $model->is_active;
+        $this->is_internal = (bool) $model->is_internal;
 
         $this->dispatchBrowser('currency-sync', [
             'id' => $this->getId(),
@@ -136,6 +139,7 @@ class DistributionClassModal extends Component
         $this->get_rice = null;
         $this->description = null;
         $this->is_active = true;
+        $this->is_internal = false;
         $this->resetValidation();
 
         $this->dispatchBrowser('currency-sync', [

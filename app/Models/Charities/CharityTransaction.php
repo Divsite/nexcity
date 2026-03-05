@@ -36,6 +36,7 @@ class CharityTransaction extends Model
         'package_members_count' => 'integer',
         'is_input_family_members' => 'boolean',
         'representative_total_money' => 'decimal:2',
+        'multiplier_count' => 'integer',
     ];
 
     public function scopeForOrganization(Builder $query, ?int $organizationId): Builder

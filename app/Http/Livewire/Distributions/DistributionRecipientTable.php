@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Distributions;
 use App\Models\Distributions\Distribution;
 use App\Models\Distributions\DistributionRecipient;
 use App\Models\Distributions\DistributionRecipientAttachment;
+use App\Models\Distributions\DistributionRecipientStatusLog;
 use App\Models\Profiles\UserResidentProfile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,8 @@ class DistributionRecipientTable extends DataTableComponent
     protected $model = DistributionRecipient::class;
 
     public int $distributionId;
+
+    public ?string $statusFilter = null;
 
     public ?int $statusRecipientId = null;
 
@@ -41,6 +44,16 @@ class DistributionRecipientTable extends DataTableComponent
 
     public ?string $statusReason = null;
 
+    public ?string $redirectTarget = null;
+
+    public ?string $redirectName = null;
+
+    public ?float $redirectMoney = null;
+
+    public ?float $redirectRice = null;
+
+    public array $viewStatusLogs = [];
+
     protected $listeners = [
         'refreshDistributionRecipients' => '$refresh',
     ];
@@ -48,6 +61,7 @@ class DistributionRecipientTable extends DataTableComponent
     public function mount(int $distributionId): void
     {
         $this->distributionId = $distributionId;
+        $this->statusFilter = request()->query('status');
     }
 
     public function configure(): void
@@ -65,10 +79,18 @@ class DistributionRecipientTable extends DataTableComponent
 
     public function builder(): Builder
     {
-        return DistributionRecipient::query()
+        $query = DistributionRecipient::query()
             ->select('distribution_recipients.*')
-            ->with(['resident', 'createdBy', 'distributionClass', 'attachments'])
+            ->with(['resident', 'officer', 'createdBy', 'distributionClass', 'attachments', 'statusLogs.createdBy'])
             ->where('distribution_recipients.distribution_id', $this->distributionId);
+
+        if ($this->statusFilter === 'undistributed') {
+            $query->whereIn('status', ['failed', 'redirected']);
+        } elseif (! empty($this->statusFilter)) {
+            $query->where('status', $this->statusFilter);
+        }
+
+        return $query;
     }
 
     public function columns(): array
@@ -109,8 +131,9 @@ class DistributionRecipientTable extends DataTableComponent
                 ->config(['placeholder' => __('messages.search')])
                 ->filter(function (Builder $builder, string $value) {
                     $builder->where(function (Builder $query) use ($value) {
-                        $query->where('residents.name', 'like', '%' . $value . '%')
-                            ->orWhere('recipient_name', 'like', '%' . $value . '%');
+                        $query->where('recipient_name', 'like', '%' . $value . '%')
+                            ->orWhereHas('resident', fn (Builder $residentQuery) => $residentQuery->where('name', 'like', '%' . $value . '%'))
+                            ->orWhereHas('officer', fn (Builder $officerQuery) => $officerQuery->where('name', 'like', '%' . $value . '%'));
                     });
                 }),
             SelectFilter::make(__('messages.status'), 'status')
@@ -121,6 +144,7 @@ class DistributionRecipientTable extends DataTableComponent
                     'distributed' => __('messages.distributed'),
                     'failed' => __('messages.failed'),
                     'rescheduled' => __('messages.rescheduled'),
+                    'redirected' => __('messages.redirected'),
                 ])
                 ->filter(fn (Builder $builder, string $value) => $builder->where('status', $value)),
         ];
@@ -143,6 +167,18 @@ class DistributionRecipientTable extends DataTableComponent
         $this->rescheduleAt = null;
         $this->deliveryMethod = 'direct';
         $this->attachments = [];
+        $this->redirectTarget = null;
+        $this->redirectName = null;
+        $this->redirectMoney = null;
+        $this->redirectRice = null;
+
+        if ($action === 'redirected') {
+            $recipient = $this->findRecipient($recipientId);
+            $recipient->loadMissing('distributionClass');
+            $this->redirectTarget = 'street';
+            $this->redirectMoney = $recipient->amount_money ?? $recipient->distributionClass?->get_money;
+            $this->redirectRice = $recipient->amount_rice ?? $recipient->distributionClass?->get_rice;
+        }
 
         $this->dispatch('distribution-status-modal:open');
     }
@@ -160,6 +196,7 @@ class DistributionRecipientTable extends DataTableComponent
         }
 
         $recipient = $this->findRecipient($this->statusRecipientId);
+        $previousStatus = $recipient->status;
 
         if (in_array($this->statusAction, ['failed', 'rescheduled'], true)) {
             if (empty($this->statusReason)) {
@@ -175,6 +212,23 @@ class DistributionRecipientTable extends DataTableComponent
             }
         }
 
+        if ($this->statusAction === 'redirected') {
+            if (empty($this->redirectTarget)) {
+                throw ValidationException::withMessages([
+                    'redirectTarget' => __('validation.required', ['attribute' => __('messages.redirect_target')]),
+                ]);
+            }
+            if ($this->redirectTarget === 'other' && empty($this->redirectName)) {
+                throw ValidationException::withMessages([
+                    'redirectName' => __('validation.required', ['attribute' => __('messages.redirect_target_name')]),
+                ]);
+            }
+            if ($recipient) {
+                $this->redirectMoney = (float) ($recipient->amount_money ?? 0);
+                $this->redirectRice = (float) ($recipient->amount_rice ?? 0);
+            }
+        }
+
         if ($this->statusAction === 'rescheduled' && empty($this->rescheduleAt)) {
             throw ValidationException::withMessages([
                 'rescheduleAt' => __('messages.reschedule_date_required'),
@@ -186,12 +240,6 @@ class DistributionRecipientTable extends DataTableComponent
                 'attachments.*' => ['image', 'max:2048'],
             ], [], [
                 'attachments.*' => __('messages.documentation_photos'),
-            ]);
-        }
-
-        if ($this->statusAction === 'distributed' && empty($this->attachments)) {
-            throw ValidationException::withMessages([
-                'attachments' => __('messages.documentation_required'),
             ]);
         }
 
@@ -214,10 +262,37 @@ class DistributionRecipientTable extends DataTableComponent
         $recipient->update($payload);
         $this->storeAttachments($recipient);
 
+        DistributionRecipientStatusLog::create([
+            'distribution_recipient_id' => $recipient->id,
+            'from_status' => $previousStatus,
+            'to_status' => $this->statusAction,
+            'status_note' => $payload['status_note'] ?? null,
+            'status_reason' => $this->statusReason,
+            'delivery_method' => $this->deliveryMethod,
+            'reschedule_at' => $this->statusAction === 'rescheduled' ? $this->rescheduleAt : null,
+            'redirect_target' => $this->statusAction === 'redirected' ? $this->redirectTarget : null,
+            'redirect_name' => $this->statusAction === 'redirected' ? $this->redirectName : null,
+            'redirect_money' => $this->statusAction === 'redirected' ? (float) ($this->redirectMoney ?? 0) : 0,
+            'redirect_rice' => $this->statusAction === 'redirected' ? (float) ($this->redirectRice ?? 0) : 0,
+            'created_by' => auth()->id(),
+        ]);
+
         $this->updateDistributionStatus();
         $this->dispatch('distribution-status-modal:close');
         $this->dispatch('toast', ['type' => 'success', 'message' => __('messages.updated_successfully')]);
-        $this->reset(['statusRecipientId', 'statusAction', 'statusNote', 'statusReason', 'rescheduleAt', 'deliveryMethod', 'attachments']);
+        $this->reset([
+            'statusRecipientId',
+            'statusAction',
+            'statusNote',
+            'statusReason',
+            'rescheduleAt',
+            'deliveryMethod',
+            'attachments',
+            'redirectTarget',
+            'redirectName',
+            'redirectMoney',
+            'redirectRice',
+        ]);
     }
 
     public function openViewModal($recipientId): void
@@ -252,6 +327,28 @@ class DistributionRecipientTable extends DataTableComponent
             ->values()
             ->toArray();
 
+        $this->viewStatusLogs = $recipient->statusLogs()
+            ->with('createdBy')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($log) => [
+                'id' => $log->id,
+                'from_status' => $log->from_status,
+                'to_status' => $log->to_status,
+                'status_note' => $log->status_note,
+                'status_reason' => $log->status_reason,
+                'delivery_method' => $log->delivery_method,
+                'reschedule_at' => $log->reschedule_at,
+                'redirect_target' => $log->redirect_target,
+                'redirect_name' => $log->redirect_name,
+                'redirect_money' => $log->redirect_money,
+                'redirect_rice' => $log->redirect_rice,
+                'created_by' => $log->createdBy?->name,
+                'created_at' => $log->created_at?->format('d/m/Y H:i'),
+            ])
+            ->values()
+            ->toArray();
+
         $this->dispatch('distribution-view-modal:open');
     }
 
@@ -264,6 +361,11 @@ class DistributionRecipientTable extends DataTableComponent
     {
         if (! empty($value)) {
             return (string) $value;
+        }
+
+        if ($row->officer?->name) {
+            $name = (string) $row->officer->name;
+            return $row->group_label ? $name . ' (' . $row->group_label . ')' : $name;
         }
 
         return $row->recipient_name ? $row->recipient_name . ' (' . __('messages.manual') . ')' : '-';
@@ -292,7 +394,7 @@ class DistributionRecipientTable extends DataTableComponent
         }
 
         $total = $distribution->recipients()->count();
-        $distributed = $distribution->recipients()->where('status', 'distributed')->count();
+        $distributed = $distribution->recipients()->whereIn('status', ['distributed', 'redirected'])->count();
 
         if ($total > 0 && $distributed === $total) {
             $distribution->update(['status' => 'completed']);

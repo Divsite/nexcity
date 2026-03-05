@@ -4,11 +4,14 @@ namespace App\Http\Livewire\CharityPayments;
 
 use App\Models\CharityPayments\CharityPayment;
 use App\Models\Masters\Bank;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class CharityPaymentModal extends Component
 {
+    use WithFileUploads;
     use WithPagination;
 
     public ?int $editingId = null;
@@ -17,6 +20,8 @@ class CharityPaymentModal extends Component
     public ?int $bank_id = null;
     public ?string $account_name = null;
     public ?string $account_number = null;
+    public ?string $qris_image_path = null;
+    public $qris_image = null;
     public ?string $notes = null;
     public bool $is_active = true;
     public string $search = '';
@@ -44,9 +49,10 @@ class CharityPaymentModal extends Component
         return [
             'organization_id' => ['nullable', 'exists:organizations,id'],
             'type' => ['required', 'string', 'max:50'],
-            'bank_id' => ['required', 'exists:m_banks,id'],
+            'bank_id' => ['nullable', 'required_unless:type,qris', 'exists:m_banks,id'],
             'account_name' => ['required', 'string', 'max:255'],
-            'account_number' => ['required', 'string', 'max:255'],
+            'account_number' => ['nullable', 'required_unless:type,qris', 'string', 'max:255'],
+            'qris_image' => ['nullable', 'image', 'max:2048'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ];
@@ -66,6 +72,8 @@ class CharityPaymentModal extends Component
         $this->bank_id = $model->bank_id;
         $this->account_name = $model->account_name;
         $this->account_number = $model->account_number;
+        $this->qris_image_path = $model->qris_image_path;
+        $this->qris_image = null;
         $this->notes = $model->notes;
         $this->is_active = (bool) $model->is_active;
 
@@ -80,11 +88,34 @@ class CharityPaymentModal extends Component
     {
         $data = $this->validate();
 
+        if ($this->type === 'qris' && ! $this->qris_image && ! $this->qris_image_path) {
+            $this->addError('qris_image', __('validation.required', ['attribute' => __('messages.qris_image')]));
+            return;
+        }
+
+        if ($this->type !== 'qris') {
+            $data['qris_image_path'] = null;
+        } else {
+            $data['account_number'] = null;
+        }
+
         if ($this->isPartner && $this->organization_id) {
             $data['organization_id'] = $this->organization_id;
         }
 
+        $existing = $this->editingId ? CharityPayment::find($this->editingId) : null;
+
+        if ($this->qris_image) {
+            $data['qris_image_path'] = $this->qris_image->store(CharityPayment::QRIS_PATH, 'uploads');
+        }
+
         CharityPayment::updateOrCreate(['id' => $this->editingId], $data);
+
+        if ($existing && $existing->qris_image_path) {
+            if ($this->type !== 'qris' || $this->qris_image) {
+                Storage::disk('uploads')->delete($existing->qris_image_path);
+            }
+        }
 
         $this->dispatch('notify', [
             'type' => 'success',
@@ -118,6 +149,8 @@ class CharityPaymentModal extends Component
         $this->bank_id = null;
         $this->account_name = null;
         $this->account_number = null;
+        $this->qris_image_path = null;
+        $this->qris_image = null;
         $this->notes = null;
         $this->is_active = true;
         $this->resetValidation();

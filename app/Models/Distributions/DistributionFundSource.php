@@ -17,6 +17,10 @@ class DistributionFundSource extends Model
     use HasFactory;
 
     protected $guarded = ['id'];
+    protected $casts = [
+        'amount_used' => 'float',
+        'amount_used_rice' => 'float',
+    ];
 
     public function distribution(): BelongsTo
     {

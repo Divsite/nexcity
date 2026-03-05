@@ -80,7 +80,9 @@ class DistributionTable extends DataTableComponent
             ->withCount([
                 'recipients',
                 'recipients as distributed_count' => fn (Builder $builder) => $builder->where('status', 'distributed'),
+                'recipients as redirected_count' => fn (Builder $builder) => $builder->where('status', 'redirected'),
                 'recipients as failed_count' => fn (Builder $builder) => $builder->where('status', 'failed'),
+                'recipients as rescheduled_count' => fn (Builder $builder) => $builder->where('status', 'rescheduled'),
             ]);
 
         if ($this->contextOrganizationId) {
@@ -121,6 +123,17 @@ class DistributionTable extends DataTableComponent
             Column::make(__('messages.total_rice'))
                 ->label(fn ($row) => $this->formatQuantity($this->distributionTotalRice($row)))
                 ->footer(fn () => $this->formatQuantity($this->filteredTotals()['total_rice'])),
+            Column::make(__('messages.recipient_statuses'))
+                ->label(fn ($row) => view('distributions.columns.recipient-statuses')->withRow($row))
+                ->footer(function () {
+                    $totals = $this->filteredTotals();
+
+                    return __('messages.pending') . ': ' . $totals['recipient_pending']
+                        . ' · ' . __('messages.distributed') . ': ' . $totals['recipient_distributed']
+                        . ' · ' . __('messages.redirected') . ': ' . $totals['recipient_redirected']
+                        . ' · ' . __('messages.failed') . ': ' . $totals['recipient_failed']
+                        . ' · ' . __('messages.rescheduled') . ': ' . $totals['recipient_rescheduled'];
+                }),
             Column::make(__('messages.progress'))
                 ->label(fn ($row) => view('distributions.columns.progress')->withRow($row)),
             Column::make(__('messages.officers'))
@@ -281,6 +294,10 @@ class DistributionTable extends DataTableComponent
     protected function distributionTotalMoney($row): float
     {
         $class = $this->distributionClassForRow($row);
+        if ($class?->is_internal) {
+            return (float) $row->recipients->sum('amount_money');
+        }
+
         $moneyPer = $this->distributionMoneyPerPerson($row);
         $recipients = (int) ($row->recipients_count ?? 0);
 
@@ -290,6 +307,10 @@ class DistributionTable extends DataTableComponent
     protected function distributionTotalRice($row): float
     {
         $class = $this->distributionClassForRow($row);
+        if ($class?->is_internal) {
+            return (float) $row->recipients->sum('amount_rice');
+        }
+
         $ricePer = $this->distributionRicePerPerson($row);
         $recipients = (int) ($row->recipients_count ?? 0);
 
@@ -299,6 +320,14 @@ class DistributionTable extends DataTableComponent
     protected function distributionMoneyPerPerson($row): float
     {
         $class = $this->distributionClassForRow($row);
+        if ($class?->is_internal) {
+            $count = (int) ($row->recipients_count ?? 0);
+            if ($count <= 0) {
+                return 0;
+            }
+            $sum = (float) $row->recipients->sum('amount_money');
+            return $sum > 0 ? $sum / $count : 0;
+        }
 
         return (float) ($class?->get_money ?? 0);
     }
@@ -306,6 +335,14 @@ class DistributionTable extends DataTableComponent
     protected function distributionRicePerPerson($row): float
     {
         $class = $this->distributionClassForRow($row);
+        if ($class?->is_internal) {
+            $count = (int) ($row->recipients_count ?? 0);
+            if ($count <= 0) {
+                return 0;
+            }
+            $sum = (float) $row->recipients->sum('amount_rice');
+            return $sum > 0 ? $sum / $count : 0;
+        }
 
         return (float) ($class?->get_rice ?? 0);
     }
@@ -394,17 +431,33 @@ class DistributionTable extends DataTableComponent
         $pendingCount = 0;
         $completedCount = 0;
         $failedCount = 0;
+        $recipientDistributed = 0;
+        $recipientRedirected = 0;
+        $recipientFailed = 0;
+        $recipientRescheduled = 0;
+        $recipientPending = 0;
 
         foreach ($distributions as $distribution) {
             $classId = $classMap[$distribution->id] ?? null;
             $class = $classId ? $classes->get($classId) : null;
-            $moneyPer = (float) ($class?->get_money ?? 0);
-            $ricePer = (float) ($class?->get_rice ?? 0);
             $recipients = (int) ($distribution->recipients_count ?? 0);
 
             $totalRecipients += $recipients;
-            $totalMoney += $moneyPer * $recipients;
-            $totalRice += $ricePer * $recipients;
+            if ($class?->is_internal) {
+                $totalMoney += (float) $distribution->recipients->sum('amount_money');
+                $totalRice += (float) $distribution->recipients->sum('amount_rice');
+            } else {
+                $moneyPer = (float) ($class?->get_money ?? 0);
+                $ricePer = (float) ($class?->get_rice ?? 0);
+                $totalMoney += $moneyPer * $recipients;
+                $totalRice += $ricePer * $recipients;
+            }
+
+            $recipientDistributed += (int) ($distribution->distributed_count ?? 0);
+            $recipientRedirected += (int) ($distribution->redirected_count ?? 0);
+            $recipientFailed += (int) ($distribution->failed_count ?? 0);
+            $recipientRescheduled += (int) ($distribution->rescheduled_count ?? 0);
+            $recipientPending += max(0, $recipients - ((int) ($distribution->distributed_count ?? 0) + (int) ($distribution->redirected_count ?? 0) + (int) ($distribution->failed_count ?? 0) + (int) ($distribution->rescheduled_count ?? 0)));
 
             $status = $distribution->status ?? null;
             if ($status === 'completed') {
@@ -423,6 +476,11 @@ class DistributionTable extends DataTableComponent
             'pending_count' => $pendingCount,
             'completed_count' => $completedCount,
             'failed_count' => $failedCount,
+            'recipient_distributed' => $recipientDistributed,
+            'recipient_redirected' => $recipientRedirected,
+            'recipient_failed' => $recipientFailed,
+            'recipient_rescheduled' => $recipientRescheduled,
+            'recipient_pending' => $recipientPending,
         ];
 
         return $this->totalsCache;
@@ -441,7 +499,9 @@ class DistributionTable extends DataTableComponent
             ->withCount([
                 'recipients',
                 'recipients as distributed_count' => fn (Builder $builder) => $builder->where('status', 'distributed'),
+                'recipients as redirected_count' => fn (Builder $builder) => $builder->where('status', 'redirected'),
                 'recipients as failed_count' => fn (Builder $builder) => $builder->where('status', 'failed'),
+                'recipients as rescheduled_count' => fn (Builder $builder) => $builder->where('status', 'rescheduled'),
             ]);
 
         if ($this->contextOrganizationId) {

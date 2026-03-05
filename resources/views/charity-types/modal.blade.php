@@ -32,14 +32,14 @@
                         <div class="row" data-livewire-currency data-livewire-id="{{ $componentId }}" data-currency-code="IDR">
                             <div class="col-6">
                                 <div class="mb-3">
-                                    <label class="form-label">{{ __('messages.min_amount') }} <span class="text-danger">*</span></label>
+                                    <label class="form-label">{{ __('messages.min_amount') }}</label>
                                     <input type="text" class="form-control @error('min_amount') is-invalid @enderror" wire:ignore data-currency-field="min_amount" data-initial="{{ $min_amount ?? '' }}">
                                     @error('min_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="mb-3">
-                                    <label class="form-label">{{ __('messages.max_amount') }} <span class="text-danger">*</span></label>
+                                    <label class="form-label">{{ __('messages.max_amount') }}</label>
                                     <input type="text" class="form-control @error('max_amount') is-invalid @enderror" wire:ignore data-currency-field="max_amount" data-initial="{{ $max_amount ?? '' }}">
                                     @error('max_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
@@ -57,7 +57,7 @@
                                     <div class="mb-3">
                                         <label class="form-label">{{ __('messages.total_rice') }} <span class="text-danger">*</span></label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control @error('total_rice') is-invalid @enderror" wire:model.defer="total_rice" step="1" min="0">
+                                        <input type="number" class="form-control @error('total_rice') is-invalid @enderror" wire:model.defer="total_rice" step="0.01" min="0">
                                         <span class="input-group-text">{{ __('messages.liter') }}</span>
                                     </div>
                                     @error('total_rice') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
@@ -65,6 +65,12 @@
                                 </div>
                             </div>
                         @endif
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" wire:model="use_multipliers" id="charity-type-use-multipliers">
+                            <label class="form-check-label" for="charity-type-use-multipliers">
+                                {{ __('messages.use_multipliers') }}
+                            </label>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">{{ __('messages.description') }}</label>
                             <textarea class="form-control @error('description') is-invalid @enderror" rows="3" wire:model.defer="description"></textarea>

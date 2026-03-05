@@ -24,7 +24,10 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">{{ __('messages.bank') }} <span class="text-danger">*</span></label>
+                            <label class="form-label">
+                                {{ __('messages.bank') }}
+                                @if($type !== 'qris') <span class="text-danger">*</span> @endif
+                            </label>
                             <div
                                 wire:ignore
                                 data-livewire-select
@@ -40,11 +43,29 @@
                             <input type="text" class="form-control @error('account_name') is-invalid @enderror" wire:model.defer="account_name">
                             @error('account_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">{{ __('messages.account_number') }} <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('account_number') is-invalid @enderror" wire:model.defer="account_number">
-                            @error('account_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
+                        @if($type !== 'qris')
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('messages.account_number') }} <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control @error('account_number') is-invalid @enderror" wire:model.defer="account_number">
+                                @error('account_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        @else
+                            <div class="mb-3">
+                                <label class="form-label">{{ __('messages.qris_image') }} <span class="text-danger">*</span></label>
+                                <input type="file" class="form-control @error('qris_image') is-invalid @enderror" wire:model="qris_image" accept="image/*">
+                                @error('qris_image') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+
+                                @if($qris_image)
+                                    <div class="mt-2">
+                                        <img src="{{ $qris_image->temporaryUrl() }}" class="img-fluid rounded" alt="QRIS">
+                                    </div>
+                                @elseif($qris_image_path)
+                                    <div class="mt-2">
+                                        <img src="{{ asset('uploads/' . ltrim($qris_image_path, '/')) }}" class="img-fluid rounded" alt="QRIS">
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label">{{ __('messages.notes') }}</label>

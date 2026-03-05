@@ -235,6 +235,7 @@ return [
         'package_payers.*.payer_phone' => 'telepon pembayar paket',
         'package_payers.*.payer_email' => 'email pembayar paket',
         'package_payers.*.total_money' => 'total uang pembayar paket',
+        'package_payers.*.total_rice' => 'total beras pembayar paket',
         'detail.is_rice' => 'pembayaran beras',
         'distribution_class_id' => 'kelas distribusi',
         'officer_ids' => 'petugas',

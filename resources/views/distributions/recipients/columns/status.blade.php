@@ -5,6 +5,7 @@
         'distributed' => ['class' => 'bg-soft-success text-success', 'label' => __('messages.distributed')],
         'failed' => ['class' => 'bg-soft-danger text-danger', 'label' => __('messages.failed')],
         'rescheduled' => ['class' => 'bg-soft-info text-info', 'label' => __('messages.rescheduled')],
+        'redirected' => ['class' => 'bg-soft-primary text-primary', 'label' => __('messages.redirected')],
     ];
     $badge = $map[$status] ?? ['class' => 'bg-soft-secondary text-secondary', 'label' => $status ? __('messages.' . $status) : '-'];
 @endphp

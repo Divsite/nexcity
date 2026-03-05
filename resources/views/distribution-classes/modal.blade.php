@@ -41,7 +41,7 @@
                                 <div class="mb-3">
                                     <label class="form-label">{{ __('messages.get_rice') }}</label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control @error('get_rice') is-invalid @enderror" wire:model.defer="get_rice" step="1" min="0">
+                                        <input type="number" class="form-control @error('get_rice') is-invalid @enderror" wire:model.defer="get_rice" step="0.01" min="0">
                                         <span class="input-group-text">{{ __('messages.liter') }}</span>
                                     </div>
                                     @error('get_rice') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
@@ -53,11 +53,19 @@
                             <textarea class="form-control @error('description') is-invalid @enderror" rows="3" wire:model.defer="description"></textarea>
                             @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" wire:model="is_active" id="distribution-class-active">
-                            <label class="form-check-label" for="distribution-class-active">
-                                {{ __('messages.active') }}
-                            </label>
+                        <div class="d-flex flex-wrap gap-3 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" wire:model="is_active" id="distribution-class-active">
+                                <label class="form-check-label" for="distribution-class-active">
+                                    {{ __('messages.active') }}
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" wire:model="is_internal" id="distribution-class-internal">
+                                <label class="form-check-label" for="distribution-class-internal">
+                                    {{ __('messages.is_internal') }}
+                                </label>
+                            </div>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">{{ __('messages.save') }}</button>

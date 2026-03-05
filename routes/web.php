@@ -217,6 +217,8 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
         // charity modules
         Route::get('charity-transactions/recap/daily/print', [CharityTransactionController::class, 'dailyRecap'])
             ->name('charity-transactions.daily-recap.print');
+        Route::get('charity-transactions/{charityTransaction}/invoice', [CharityTransactionController::class, 'invoice'])
+            ->name('charity-transactions.invoice');
         Route::get('charity-transactions/summary', [CharityTransactionController::class, 'summary'])
             ->name('charity-transactions.summary');
         Route::resource('charity-transactions', CharityTransactionController::class);

@@ -14,6 +14,14 @@ class CharityTransactionPayer extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'is_money' => 'boolean',
+        'is_rice' => 'boolean',
+        'multiplier_count' => 'integer',
+        'total_money' => 'float',
+        'total_rice' => 'float',
+    ];
+
     public function charityTransaction(): BelongsTo
     {
         return $this->belongsTo(CharityTransaction::class, 'charity_transaction_id');

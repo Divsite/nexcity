@@ -29,6 +29,7 @@ return new class extends Migration
             $table->dateTime('received_at')->nullable();
             $table->decimal('total_money', 18, 2)->nullable();
             $table->decimal('total_rice', 10, 2)->nullable();
+            $table->unsignedInteger('multiplier_count')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });
@@ -45,6 +46,7 @@ return new class extends Migration
             $table->foreignId('charity_type_id')->nullable()->constrained('charity_types')->nullOnDelete();
             $table->string('source_name')->nullable();
             $table->decimal('amount_used', 18, 2);
+            $table->decimal('amount_used_rice', 10, 2)->default(0);
             $table->text('notes')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

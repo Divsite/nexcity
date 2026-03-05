@@ -54,7 +54,8 @@ const app = createApp({
                 return window.messages?.all || 'All';
             }
 
-            const selected = this.options.charity_types.find((item) => String(item.id) === String(this.filters.type_id));
+            const list = Array.isArray(this.options.charity_types) ? this.options.charity_types : [];
+            const selected = list.find((item) => String(item.id) === String(this.filters.type_id));
             return selected?.name || (window.messages?.all || 'All');
         },
         selectedYearTypeLabel() {
@@ -62,7 +63,8 @@ const app = createApp({
                 return window.messages?.all || 'All';
             }
 
-            const selected = this.options.charity_types.find((item) => String(item.id) === String(this.filters.year_type_id));
+            const list = Array.isArray(this.options.charity_types) ? this.options.charity_types : [];
+            const selected = list.find((item) => String(item.id) === String(this.filters.year_type_id));
             return selected?.name || (window.messages?.all || 'All');
         },
         selectedPaymentLabel() {
@@ -70,7 +72,8 @@ const app = createApp({
                 return window.messages?.all || 'All';
             }
 
-            const selected = this.options.payment_methods.find((item) => String(item.value) === String(this.filters.payment_method));
+            const list = Array.isArray(this.options.payment_methods) ? this.options.payment_methods : [];
+            const selected = list.find((item) => String(item.value) === String(this.filters.payment_method));
             return selected?.label || (window.messages?.all || 'All');
         },
         selectedYearPaymentLabel() {
@@ -78,7 +81,8 @@ const app = createApp({
                 return window.messages?.all || 'All';
             }
 
-            const selected = this.options.payment_methods.find((item) => String(item.value) === String(this.filters.year_payment_method));
+            const list = Array.isArray(this.options.payment_methods) ? this.options.payment_methods : [];
+            const selected = list.find((item) => String(item.value) === String(this.filters.year_payment_method));
             return selected?.label || (window.messages?.all || 'All');
         },
     },

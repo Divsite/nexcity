@@ -25,6 +25,7 @@ class CharityTransactionController extends Controller
         $this->middleware('permission:add-mosque-charity-transactions')->only(['create', 'store']);
         $this->middleware('permission:edit-mosque-charity-transactions')->only(['edit', 'update']);
         $this->middleware('permission:delete-mosque-charity-transactions')->only('destroy');
+        $this->middleware('permission:print-mosque-charity-transactions')->only('invoice');
     }
 
     public function index(): View
@@ -140,5 +141,24 @@ class CharityTransactionController extends Controller
         $payload = $this->transactionService->dailyRecapData($request->query('date'));
 
         return view('charities.recap-daily-print', $payload);
+    }
+
+    public function invoice(CharityTransaction $charityTransaction): View
+    {
+        $context = $this->transactionService->partnerContext();
+        if ($context && $charityTransaction->organization_id !== ($context['organization_id'] ?? null)) {
+            abort(403);
+        }
+
+        $charityTransaction->load([
+            'organization.profile',
+            'charityType.source',
+            'receivedBy',
+            'packagePayers',
+        ]);
+
+        return view('charities.invoice-print', [
+            'transaction' => $charityTransaction,
+        ]);
     }
 }

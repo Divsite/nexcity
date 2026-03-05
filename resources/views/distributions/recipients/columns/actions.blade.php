@@ -1,13 +1,11 @@
 @php($rowId = $row?->getKey())
 <div class="d-flex flex-wrap gap-1">
     @can('read-mosque-charity-distribution-recipients')
-        @if($row->status === 'distributed')
-            <button type="button"
-                    class="btn btn-sm btn-soft-info"
-                    wire:click="openViewModal({{ $rowId }})">
-                <i class="ri-image-line me-1"></i>{{ __('messages.view') }}
-            </button>
-        @endif
+        <button type="button"
+                class="btn btn-sm btn-soft-info"
+                wire:click="openViewModal({{ $rowId }})">
+            <i class="ri-image-line me-1"></i>{{ __('messages.view') }}
+        </button>
     @endcan
 
     @can('edit-mosque-charity-distribution-recipients')
@@ -31,6 +29,11 @@
                 <li>
                     <a class="dropdown-item" role="button" wire:click="openStatusModal({{ $rowId }}, 'rescheduled')">
                         <i class="ri-time-line align-bottom me-2 text-muted"></i>{{ __('messages.reschedule') }}
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" role="button" wire:click="openStatusModal({{ $rowId }}, 'redirected')">
+                        <i class="ri-share-forward-line align-bottom me-2 text-muted"></i>{{ __('messages.redirected') }}
                     </a>
                 </li>
             </ul>

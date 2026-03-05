@@ -162,6 +162,8 @@ class RolePermissionSeeder extends Seeder
                 'edit-mosque-charity-transactions',
                 'add-mosque-charity-transactions',
                 'delete-mosque-charity-transactions',
+                'print-mosque-charity-transactions',
+                'print-mosque-charity-transactions',
                 'browse-mosque-charity-types',
                 'read-mosque-charity-types',
                 'edit-mosque-charity-types',
@@ -250,6 +252,7 @@ class RolePermissionSeeder extends Seeder
                 'edit-mosque-charity-transactions',
                 'add-mosque-charity-transactions',
                 'delete-mosque-charity-transactions',
+                'print-mosque-charity-transactions',
 
                 // charity settings
                 'browse-mosque-charity-types',
@@ -967,6 +970,14 @@ class RolePermissionSeeder extends Seeder
                 'scope' => 'partner',
                 'context' => 'mosque',
                 'description' => 'delete_mosque_charity_transactions',
+            ],
+            [
+                'name' => 'print-mosque-charity-transactions',
+                'display_name' => 'print_mosque_charity_transactions',
+                'group' => $groups['mosque_charity'],
+                'scope' => 'partner',
+                'context' => 'mosque',
+                'description' => 'print_mosque_charity_transactions',
             ],
             [
                 'name' => 'browse-mosque-charity-types',

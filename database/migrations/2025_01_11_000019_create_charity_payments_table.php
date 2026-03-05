@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('bank_id')->nullable()->constrained('m_banks')->nullOnDelete();
             $table->string('account_name')->nullable();
             $table->string('account_number')->nullable();
+            $table->string('qris_image_path')->nullable();
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

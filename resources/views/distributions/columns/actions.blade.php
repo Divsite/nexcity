@@ -11,6 +11,13 @@
                     </a>
                 </li>
             @endcan
+            @can('edit-mosque-charity-distributions')
+                <li>
+                    <a href="{{ route('mosque.charity-transactions.index', ['tab' => 'distributions', 'edit' => $row->id]) }}#charity-tab-distributions" class="dropdown-item">
+                        <i class="ri-pencil-fill align-bottom me-2 text-muted"></i> {{ __('messages.edit') }}
+                    </a>
+                </li>
+            @endcan
             @can('delete-mosque-charity-distributions')
                 <li>
                     <a class="dropdown-item" role="button" wire:click="$dispatch('triggerDelete', [{{ $row->id }}])">

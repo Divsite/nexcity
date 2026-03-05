@@ -17,6 +17,7 @@ return new class extends Migration
             $table->decimal('max_amount', 18, 2)->nullable();
             $table->boolean('is_rice')->default(false);
             $table->decimal('total_rice', 10, 2)->nullable();
+            $table->boolean('use_multipliers')->default(false);
             $table->decimal('package_amount', 18, 2)->nullable();
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);

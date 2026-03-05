@@ -156,7 +156,7 @@
                 <label class="form-label">{{ __('messages.charity_payments') }} <span class="text-danger">*</span></label>
                 <select class="form-select" v-model="form.charity_payment_id">
                     <option value="">{{ __('messages.please_select') }}</option>
-                    <option v-for="payment in options.payments" :value="payment.id" :key="payment.id">
+                    <option v-for="payment in filteredPayments" :value="payment.id" :key="payment.id">
                         @{{ payment.type ? payment.type.toUpperCase() : '-' }} - @{{ payment.bank_name || '-' }} - @{{ payment.account_name || '-' }}
                     </option>
                 </select>
@@ -166,49 +166,112 @@
 
                 <div class="alert alert-light border mt-2 mb-0 py-2" v-if="selectedPayment">
                     <div class="small text-muted mb-1">{{ __('messages.payment_transfer_target') }}</div>
-                    <div class="fw-semibold">@{{ selectedPayment.bank_name || '-' }}</div>
-                    <div class="small">{{ __('messages.account_name') }}: <strong>@{{ selectedPayment.account_name || '-' }}</strong></div>
-                    <div class="small">{{ __('messages.account_number') }}: <strong>@{{ selectedPayment.account_number || '-' }}</strong></div>
+                    <template v-if="selectedPayment.type === 'qris'">
+                        <div class="fw-semibold mb-1">@{{ selectedPayment.account_name || '-' }}</div>
+                        <div v-if="selectedPayment.qris_image_url">
+                            <img :src="selectedPayment.qris_image_url" class="img-fluid rounded" alt="QRIS">
+                        </div>
+                        <div v-else class="small text-muted">-</div>
+                    </template>
+                    <template v-else>
+                        <div class="fw-semibold">@{{ selectedPayment.bank_name || '-' }}</div>
+                        <div class="small">{{ __('messages.account_name') }}: <strong>@{{ selectedPayment.account_name || '-' }}</strong></div>
+                        <div class="small">{{ __('messages.account_number') }}: <strong>@{{ selectedPayment.account_number || '-' }}</strong></div>
+                    </template>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div :class="['mb-0', errors.total_money ? 'is-invalid' : '']">
-                <label class="form-label">
-                    {{ __('messages.total_money') }}
-                    <span class="text-danger" v-if="!selectedCharityType || !selectedCharityType.is_rice || !form.detail.is_rice">*</span>
-                </label>
-                <vue-currency-input
-                    v-model="form.total_money"
-                    :options="currencyOptions"
-                    :class="`form-control ${errors.total_money ? 'is-invalid' : ''}`"
-                    :disabled="form.is_package"
-                ></vue-currency-input>
-                <span class="invalid-feedback d-block" v-if="errors.total_money">
-                    <strong>@{{ errors.total_money[0] }}</strong>
-                </span>
             </div>
         </div>
 
         <div class="col-lg-4" v-if="selectedCharityType && selectedCharityType.is_rice">
             <div class="mb-0">
-                <label class="form-label d-block">{{ __('messages.is_rice') }}</label>
+                <label class="form-label d-block">{{ __('messages.payment_options') }}</label>
                 <div class="form-check form-switch form-switch-md">
+                    <input class="form-check-input" type="checkbox" id="charity-is-money" v-model="form.detail.is_money">
+                    <label class="form-check-label" for="charity-is-money">
+                        {{ __('messages.include_money_payment') }}
+                    </label>
+                </div>
+                <div class="form-check form-switch form-switch-md mt-2">
                     <input class="form-check-input" type="checkbox" id="charity-is-rice" v-model="form.detail.is_rice">
                     <label class="form-check-label" for="charity-is-rice">
                         {{ __('messages.include_rice_payment') }}
                     </label>
                 </div>
+                <span class="invalid-feedback d-block" v-if="errors.payment_option">
+                    <strong>@{{ errors.payment_option[0] }}</strong>
+                </span>
             </div>
         </div>
 
+        <div class="col-lg-4" v-if="form.detail.is_money && !form.is_package">
+            <div :class="['mb-0', errors.amount_money ? 'is-invalid' : '']">
+                <label class="form-label">
+                    {{ __('messages.amount') }} <span class="text-danger">*</span>
+                </label>
+                <vue-currency-input
+                    v-model="form.amount_money"
+                    :options="currencyOptions"
+                    :class="`form-control ${errors.amount_money ? 'is-invalid' : ''}`"
+                ></vue-currency-input>
+                <span class="invalid-feedback d-block" v-if="errors.amount_money">
+                    <strong>@{{ errors.amount_money[0] }}</strong>
+                </span>
+            </div>
+        </div>
+        <div class="col-lg-4" v-if="form.detail.is_money">
+            <div :class="['mb-0', errors.total_money ? 'is-invalid' : '']">
+                <label class="form-label">
+                    {{ __('messages.total_money') }} <span class="text-danger">*</span>
+                </label>
+                <vue-currency-input
+                    v-model="form.total_money"
+                    :options="currencyOptions"
+                    :class="`form-control ${errors.total_money ? 'is-invalid' : ''}`"
+                    :disabled="true"
+                ></vue-currency-input>
+                <div class="form-text" v-if="form.detail.is_money">
+                    {{ __('messages.total_preview') }}: @{{ formatCurrency(totalMoneyPreview) }}
+                </div>
+                <span class="invalid-feedback d-block" v-if="errors.total_money">
+                    <strong>@{{ errors.total_money[0] }}</strong>
+                </span>
+            </div>
+        </div>
+        <div class="col-lg-4" v-if="selectedCharityType && selectedCharityType.use_multipliers && (form.detail.is_money || form.detail.is_rice)">
+            <div :class="['mb-0', errors.multiplier_count ? 'is-invalid' : '']">
+                <label class="form-label">{{ __('messages.total_days') }} <span class="text-danger">*</span></label>
+                <input type="number"
+                       min="1"
+                       class="form-control"
+                       :class="errors.multiplier_count ? 'is-invalid' : ''"
+                       v-model="form.multiplier_count">
+                <span class="invalid-feedback d-block" v-if="errors.multiplier_count">
+                    <strong>@{{ errors.multiplier_count[0] }}</strong>
+                </span>
+            </div>
+        </div>
+
+        <div class="col-lg-4" v-if="selectedCharityType && selectedCharityType.is_rice && form.detail.is_rice && !form.is_package">
+            <div :class="['mb-0', errors.amount_rice ? 'is-invalid' : '']">
+                <label class="form-label">{{ __('messages.amount') }} <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="number" class="form-control" v-model="form.amount_rice" min="0" step="0.01">
+                    <span class="input-group-text">{{ __('messages.liter') }}</span>
+                </div>
+                <span class="invalid-feedback d-block" v-if="errors.amount_rice">
+                    <strong>@{{ errors.amount_rice[0] }}</strong>
+                </span>
+            </div>
+        </div>
         <div class="col-lg-4" v-if="selectedCharityType && selectedCharityType.is_rice && form.detail.is_rice">
             <div :class="['mb-0', errors.total_rice ? 'is-invalid' : '']">
                 <label class="form-label">{{ __('messages.total_rice') }} <span class="text-danger">*</span></label>
                 <div class="input-group">
-                    <input type="number" class="form-control" v-model="form.total_rice" min="0" step="0.01">
+                    <input type="number" class="form-control" v-model="form.total_rice" min="0" step="0.01" :disabled="true">
                     <span class="input-group-text">{{ __('messages.liter') }}</span>
+                </div>
+                <div class="form-text" v-if="form.detail.is_rice">
+                    {{ __('messages.total_preview') }}: @{{ totalRicePreviewLabel }} {{ __('messages.liter') }}
                 </div>
                 <span class="invalid-feedback d-block" v-if="errors.total_rice">
                     <strong>@{{ errors.total_rice[0] }}</strong>
@@ -255,14 +318,14 @@
             </div>
         </div>
 
-        <div class="form-check mb-3">
+        <div class="form-check mb-3" v-if="form.detail.is_money">
             <input class="form-check-input" type="checkbox" id="charity-use-same-package-amount" v-model="form.use_same_package_amount">
             <label class="form-check-label" for="charity-use-same-package-amount">
                 {{ __('messages.use_same_package_amount') }}
             </label>
         </div>
 
-        <div class="row mb-3" v-if="form.use_same_package_amount">
+        <div class="row mb-3" v-if="form.detail.is_money && form.use_same_package_amount">
             <div class="col-lg-4">
                 <label class="form-label">{{ __('messages.package_amount_each') }} <span class="text-danger">*</span></label>
                 <vue-currency-input
@@ -276,14 +339,14 @@
             </div>
         </div>
 
-        <div class="form-check mb-3" v-if="form.use_same_package_amount">
+        <div class="form-check mb-3" v-if="form.detail.is_money && form.use_same_package_amount">
             <input class="form-check-input" type="checkbox" id="charity-is-input-family-members" v-model="form.is_input_family_members">
             <label class="form-check-label" for="charity-is-input-family-members">
                 {{ __('messages.input_family_members_data') }}
             </label>
         </div>
 
-        <div class="row mb-3" v-if="!form.use_same_package_amount">
+        <div class="row mb-3" v-if="form.detail.is_money && !form.use_same_package_amount">
             <div class="col-lg-4">
                 <label class="form-label">{{ __('messages.representative_total_money') }} <span class="text-danger">*</span></label>
                 <vue-currency-input
@@ -297,8 +360,21 @@
                 <div class="form-text">{{ __('messages.representative_amount_hint') }}</div>
             </div>
         </div>
+        <div class="row mb-3" v-if="form.is_package && form.detail.is_rice">
+            <div class="col-lg-4">
+                <label class="form-label">{{ __('messages.total_rice') }} <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input type="number" class="form-control" v-model="form.representative_total_rice" min="0" step="0.01">
+                    <span class="input-group-text">{{ __('messages.liter') }}</span>
+                </div>
+                <span class="invalid-feedback d-block" v-if="errors.representative_total_rice">
+                    <strong>@{{ errors.representative_total_rice[0] }}</strong>
+                </span>
+                <div class="form-text">{{ __('messages.representative_amount_hint') }}</div>
+            </div>
+        </div>
 
-        <div class="alert alert-light border mb-3" v-if="form.use_same_package_amount">
+        <div class="alert alert-light border mb-3" v-if="form.detail.is_money && form.use_same_package_amount">
             {{ __('messages.package_payers_optional_note') }}
         </div>
 
@@ -317,7 +393,9 @@
                         <th>{{ __('messages.name') }} <span class="text-danger">*</span></th>
                         <th>{{ __('messages.phone') }}</th>
                         <th>{{ __('messages.email') }}</th>
-                        <th>{{ __('messages.total_money') }} <span class="text-danger" v-if="!form.use_same_package_amount">*</span></th>
+                        <th>{{ __('messages.money') }}</th>
+                        <th v-if="selectedCharityType && selectedCharityType.use_multipliers">{{ __('messages.total_days') }}</th>
+                        <th v-if="selectedCharityType && selectedCharityType.is_rice">{{ __('messages.rice') }}</th>
                         <th>{{ __('messages.actions') }}</th>
                     </tr>
                     </thead>
@@ -343,14 +421,58 @@
                             </span>
                         </td>
                         <td>
+                            <div class="form-check form-switch form-switch-sm mb-2">
+                                <input class="form-check-input" type="checkbox" :id="`payer-money-${index}`" v-model="payer.is_money">
+                                <label class="form-check-label" :for="`payer-money-${index}`">
+                                    {{ __('messages.include_money_payment') }}
+                                </label>
+                            </div>
                             <vue-currency-input
+                                v-if="payer.is_money"
                                 v-model="payer.total_money"
                                 :options="currencyOptions"
                                 :disabled="form.use_same_package_amount"
                                 :class="`form-control ${firstError('package_payers.' + index + '.total_money') ? 'is-invalid' : ''}`"
                             ></vue-currency-input>
+                            <div class="form-text" v-if="payer.is_money">
+                                {{ __('messages.total_preview') }}:
+                                @{{ formatCurrency(payerMoneyPreview(payer)) }}
+                            </div>
                             <span class="invalid-feedback d-block" v-if="firstError('package_payers.' + index + '.total_money')">
                                 <strong>@{{ firstError('package_payers.' + index + '.total_money') }}</strong>
+                            </span>
+                        </td>
+                        <td v-if="selectedCharityType && selectedCharityType.use_multipliers">
+                            <input type="number"
+                                   min="1"
+                                   :class="`form-control ${firstError('package_payers.' + index + '.multiplier_count') ? 'is-invalid' : ''}`"
+                                   v-model="payer.multiplier_count"
+                                   :disabled="!payer.is_money && !payer.is_rice">
+                            <span class="invalid-feedback d-block" v-if="firstError('package_payers.' + index + '.multiplier_count')">
+                                <strong>@{{ firstError('package_payers.' + index + '.multiplier_count') }}</strong>
+                            </span>
+                        </td>
+                        <td v-if="selectedCharityType && selectedCharityType.is_rice">
+                            <div class="form-check form-switch form-switch-sm mb-2">
+                                <input class="form-check-input" type="checkbox" :id="`payer-rice-${index}`" v-model="payer.is_rice">
+                                <label class="form-check-label" :for="`payer-rice-${index}`">
+                                    {{ __('messages.include_rice_payment') }}
+                                </label>
+                            </div>
+                            <div v-if="payer.is_rice" :class="['input-group', firstError('package_payers.' + index + '.total_rice') ? 'is-invalid' : '']">
+                                <input type="number"
+                                       min="0"
+                                       step="0.01"
+                                       class="form-control"
+                                       v-model="payer.total_rice">
+                                <span class="input-group-text">{{ __('messages.liter') }}</span>
+                            </div>
+                            <div class="form-text" v-if="payer.is_rice">
+                                {{ __('messages.total_preview') }}:
+                                @{{ formatDecimal(payerRicePreview(payer)) }} {{ __('messages.liter') }}
+                            </div>
+                            <span class="invalid-feedback d-block" v-if="firstError('package_payers.' + index + '.total_rice')">
+                                <strong>@{{ firstError('package_payers.' + index + '.total_rice') }}</strong>
                             </span>
                         </td>
                         <td>
@@ -361,7 +483,7 @@
                     </tr>
 
                     <tr v-if="form.package_payers.length === 0">
-                        <td colspan="5" class="text-center text-muted">{{ __('messages.data_not_found') }}</td>
+                        <td :colspan="5 + (selectedCharityType && selectedCharityType.use_multipliers ? 1 : 0) + (selectedCharityType && selectedCharityType.is_rice ? 1 : 0)" class="text-center text-muted">{{ __('messages.data_not_found') }}</td>
                     </tr>
                     </tbody>
                 </table>
@@ -372,13 +494,8 @@
             </span>
         </template>
 
-        <div class="alert alert-warning py-2 mb-0" v-else>
+        <div class="alert alert-warning py-2 mb-0" v-else-if="form.detail.is_money">
             {{ __('messages.package_payers_optional_note') }}
-        </div>
-
-        <div class="alert alert-info py-2 mt-3 mb-0">
-            <span class="fw-semibold">{{ __('messages.total_preview') }}:</span>
-            @{{ formatCurrency(form.total_money) }}
         </div>
     </div>
 

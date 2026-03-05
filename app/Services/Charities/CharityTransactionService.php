@@ -13,6 +13,7 @@ use App\Models\Charities\CharityTransaction;
 use App\Models\Charities\CharityTransactionPayer;
 use App\Models\CharityPayments\CharityPayment;
 use App\Models\CharityTypes\CharityType;
+use App\Services\Notifications\OpenclawWebhookService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
@@ -34,6 +35,8 @@ class CharityTransactionService
             $this->syncDetail($transaction, $detail);
             $this->syncPackagePayers($transaction, $packagePayers);
 
+            $this->notifyTransferIfNeeded($transaction);
+
             return $transaction;
         });
     }
@@ -41,13 +44,31 @@ class CharityTransactionService
     public function update(CharityTransaction $charityTransaction, array $data): CharityTransaction
     {
         return DB::transaction(function () use ($charityTransaction, $data) {
+            $previousStatus = $charityTransaction->status;
             [$payload, $detail, $packagePayers] = $this->prepareTransactionPayload($data, $charityTransaction);
             $charityTransaction->update($payload);
             $this->syncDetail($charityTransaction, $detail, true);
             $this->syncPackagePayers($charityTransaction, $packagePayers);
 
+            if ($previousStatus !== 'paid' && $charityTransaction->status === 'paid') {
+                $this->notifyTransferIfNeeded($charityTransaction);
+            }
+
             return $charityTransaction;
         });
+    }
+
+    protected function notifyTransferIfNeeded(CharityTransaction $transaction): void
+    {
+        if (! in_array($transaction->payment_method, ['transfer', 'qris'], true)) {
+            return;
+        }
+
+        if ($transaction->status !== 'paid') {
+            return;
+        }
+
+        app(OpenclawWebhookService::class)->sendTransferNotification($transaction);
     }
 
     public function summaryPayload(
@@ -256,6 +277,9 @@ class CharityTransactionService
 
         $payments = $paymentQuery->get()->map(function (CharityPayment $payment) {
             $bankLabel = $payment->bank?->name;
+            $qrisImage = $payment->qris_image_path
+                ? asset('uploads/' . ltrim($payment->qris_image_path, '/'))
+                : null;
 
             return [
                 'id' => $payment->id,
@@ -263,6 +287,7 @@ class CharityTransactionService
                 'bank_name' => $bankLabel,
                 'account_name' => $payment->account_name,
                 'account_number' => $payment->account_number,
+                'qris_image_url' => $qrisImage,
                 'label' => trim(implode(' - ', array_filter([
                     $bankLabel,
                     $payment->account_name,
@@ -283,6 +308,7 @@ class CharityTransactionService
                 'package_amount' => $charityType->package_amount,
                 'year' => $charityType->year,
                 'slug' => $charityType->source?->slug,
+                'use_multipliers' => (bool) $charityType->use_multipliers,
             ];
         })->values();
 
@@ -291,8 +317,25 @@ class CharityTransactionService
         $detailPayload = $this->detailPayloadForForm($transaction);
         $detailPayload['is_rice'] = (bool) ($detailPayload['is_rice'] ?? false);
 
+        $multiplierCount = (int) ($transaction->multiplier_count ?: 1);
+        $useMultipliers = (bool) ($transaction->charityType?->use_multipliers);
+        $multiplierCount = $useMultipliers && $multiplierCount > 0 ? $multiplierCount : 1;
+
         $detailMoney = (float) ($detailPayload['amount_money'] ?? 0);
         $detailRice = (float) ($detailPayload['amount_rice'] ?? 0);
+
+        if ($useMultipliers && $multiplierCount > 1 && $detailMoney > 0 && ! $transaction->is_package) {
+            $detailMoney = $detailMoney / $multiplierCount;
+            $detailPayload['amount_money'] = $detailMoney;
+        }
+        if ($useMultipliers && $multiplierCount > 1 && $detailRice > 0 && ! $transaction->is_package) {
+            $detailRice = $detailRice / $multiplierCount;
+            $detailPayload['amount_rice'] = $detailRice;
+        }
+
+        $detailPayload['is_money'] = $detailMoney > 0
+            ? true
+            : (! $detailPayload['is_rice']);
 
         $payload = [
             'mode' => $transaction->exists ? 'edit' : 'create',
@@ -317,21 +360,58 @@ class CharityTransactionService
                 'is_package' => (bool) $transaction->is_package,
                 'use_same_package_amount' => (bool) $transaction->use_same_package_amount,
                 'is_input_family_members' => (bool) $transaction->is_input_family_members,
-                'representative_total_money' => $transaction->representative_total_money,
+                'representative_total_money' => ($useMultipliers && $multiplierCount > 1 && $transaction->representative_total_money)
+                    ? ((float) $transaction->representative_total_money / $multiplierCount)
+                    : $transaction->representative_total_money,
+                'representative_total_rice' => $transaction->is_package
+                    ? $this->packageRepresentativeRice($transaction, $useMultipliers ? $multiplierCount : 1)
+                    : null,
                 'package_amount_each' => $transaction->package_amount_each,
                 'package_members_count' => $transaction->package_members_count,
-                'package_payers' => $transaction->packagePayers->map(function (CharityTransactionPayer $payer) {
+                'package_payers' => $transaction->packagePayers->map(function (CharityTransactionPayer $payer) use ($useMultipliers) {
+                    $money = $payer->total_money;
+                    $rice = $payer->total_rice;
+                    $payerMultiplier = (int) ($payer->multiplier_count ?: 1);
+                    if ($useMultipliers && $payerMultiplier > 1 && $money !== null) {
+                        $money = (float) $money / $payerMultiplier;
+                    }
+                    if ($useMultipliers && $payerMultiplier > 1 && $rice !== null) {
+                        $rice = (float) $rice / $payerMultiplier;
+                    }
                     return [
                         'payer_name' => $payer->payer_name,
                         'payer_phone' => $payer->payer_phone,
                         'payer_email' => $payer->payer_email,
-                        'total_money' => $payer->total_money,
+                        'is_money' => (bool) $payer->is_money,
+                        'is_rice' => (bool) $payer->is_rice,
+                        'multiplier_count' => $payer->multiplier_count,
+                        'total_money' => $money,
+                        'total_rice' => $rice,
                         'notes' => $payer->notes,
                     ];
                 })->values()->toArray(),
                 'status' => $transaction->status ?? 'paid',
-                'total_money' => $detailMoney > 0 ? $detailMoney : $transaction->total_money,
-                'total_rice' => $detailRice > 0 ? $detailRice : $transaction->total_rice,
+                'total_money' => $detailMoney > 0
+                    ? $detailMoney
+                    : (($useMultipliers && $multiplierCount > 1 && ! $transaction->is_package && $transaction->total_money)
+                        ? ((float) $transaction->total_money / $multiplierCount)
+                        : $transaction->total_money),
+                'total_rice' => $detailRice > 0
+                    ? $detailRice
+                    : (($useMultipliers && $multiplierCount > 1 && ! $transaction->is_package && $transaction->total_rice)
+                        ? ((float) $transaction->total_rice / $multiplierCount)
+                        : $transaction->total_rice),
+                'amount_money' => ! $transaction->is_package
+                    ? (($useMultipliers && $multiplierCount > 1 && $detailMoney > 0)
+                        ? ((float) $detailMoney / $multiplierCount)
+                        : $detailMoney)
+                    : null,
+                'amount_rice' => ! $transaction->is_package
+                    ? (($useMultipliers && $multiplierCount > 1 && $detailRice > 0)
+                        ? ((float) $detailRice / $multiplierCount)
+                        : $detailRice)
+                    : null,
+                'multiplier_count' => $useMultipliers ? $multiplierCount : null,
                 'notes' => $transaction->notes,
                 'detail' => $detailPayload,
             ],
@@ -413,7 +493,11 @@ class CharityTransactionService
                 'payer_name' => $payer['payer_name'],
                 'payer_phone' => $payer['payer_phone'] ?? null,
                 'payer_email' => $payer['payer_email'] ?? null,
+                'is_money' => array_key_exists('is_money', $payer) ? (bool) $payer['is_money'] : true,
+                'is_rice' => array_key_exists('is_rice', $payer) ? (bool) $payer['is_rice'] : false,
+                'multiplier_count' => $payer['multiplier_count'] ?? null,
                 'total_money' => $payer['total_money'] ?? 0,
+                'total_rice' => $payer['total_rice'] ?? 0,
                 'notes' => $payer['notes'] ?? null,
             ]);
         }
@@ -456,17 +540,29 @@ class CharityTransactionService
     {
         $detailInput = $data['detail'] ?? [];
         $packagePayers = $data['package_payers'] ?? [];
+        $inputAmountMoney = isset($data['amount_money']) ? (float) $data['amount_money'] : null;
+        $inputAmountRice = isset($data['amount_rice']) ? (float) $data['amount_rice'] : null;
         $inputTotalMoney = isset($data['total_money']) ? (float) $data['total_money'] : null;
         $inputTotalRice = isset($data['total_rice']) ? (float) $data['total_rice'] : null;
         $inputNotes = $data['notes'] ?? null;
         $isInputFamilyMembers = (bool) ($data['is_input_family_members'] ?? false);
         $representativeTotalMoney = isset($data['representative_total_money']) ? (float) $data['representative_total_money'] : null;
+        $representativeTotalRice = isset($data['representative_total_rice']) ? (float) $data['representative_total_rice'] : null;
+        $repPayMoney = array_key_exists('is_money', $detailInput) ? (bool) $detailInput['is_money'] : true;
+        $repPayRice = array_key_exists('is_rice', $detailInput) ? (bool) $detailInput['is_rice'] : false;
+        $packageHasMoney = collect($packagePayers)->contains(fn ($payer) => ! empty($payer['is_money']));
+        $packageHasRice = collect($packagePayers)->contains(fn ($payer) => ! empty($payer['is_rice']));
+        $payMoney = $repPayMoney || $packageHasMoney;
+        $payRice = $repPayRice || $packageHasRice;
 
         unset(
             $data['detail'],
             $data['package_payers'],
             $data['is_input_family_members'],
             $data['representative_total_money'],
+            $data['representative_total_rice'],
+            $data['amount_money'],
+            $data['amount_rice'],
             $data['total_money'],
             $data['total_rice'],
             $data['notes'],
@@ -482,6 +578,19 @@ class CharityTransactionService
         $data['representative_total_money'] = ($data['is_package'] && ! $data['use_same_package_amount'])
             ? $representativeTotalMoney
             : null;
+
+        if (! $repPayMoney) {
+            $representativeTotalMoney = null;
+            $data['representative_total_money'] = null;
+        }
+
+        if (! $payMoney) {
+            $inputTotalMoney = null;
+            $representativeTotalMoney = null;
+            $data['package_amount_each'] = null;
+            $data['representative_total_money'] = null;
+            $data['total_money'] = null;
+        }
 
         if (empty($data['payer_name'])) {
             throw ValidationException::withMessages([
@@ -503,23 +612,48 @@ class CharityTransactionService
             ]);
         }
 
+        if (! $data['is_package']) {
+            if ($inputAmountMoney === null) {
+                $inputAmountMoney = $inputTotalMoney;
+            }
+            if ($inputAmountRice === null) {
+                $inputAmountRice = $inputTotalRice;
+            }
+        }
+
+        $multiplierCount = (int) ($data['multiplier_count'] ?? 1);
+        if ($charityType->use_multipliers && ($payMoney || $payRice)) {
+            if ($multiplierCount < 1) {
+                throw ValidationException::withMessages([
+                    'multiplier_count' => __('validation.required', ['attribute' => __('messages.total_days')]),
+                ]);
+            }
+            $data['multiplier_count'] = $multiplierCount;
+        } else {
+            $multiplierCount = 1;
+            $data['multiplier_count'] = null;
+        }
+
         $detail = $this->normalizedDetailFromInput(
             $charityType,
             $detailInput,
-            $inputTotalMoney,
-            $inputTotalRice,
+            $inputAmountMoney,
+            $inputAmountRice,
             $inputNotes,
             $isInputFamilyMembers,
-            $representativeTotalMoney
+            $representativeTotalMoney,
+            $payMoney,
+            $payRice,
+            $data['is_package']
         );
 
-        if ($data['is_package'] && $data['use_same_package_amount']) {
+        if ($payMoney && $data['is_package'] && $data['use_same_package_amount']) {
             if (! empty($data['package_amount_each'])) {
                 $this->assertAmountWithinCharityRule($charityType, (float) $data['package_amount_each'], 'package_amount_each');
             }
         }
 
-        if ($data['is_package'] && ! $data['use_same_package_amount']) {
+        if ($payMoney && $data['is_package'] && ! $data['use_same_package_amount']) {
             if ($representativeTotalMoney !== null) {
                 $this->assertAmountWithinCharityRule($charityType, (float) $representativeTotalMoney, 'representative_total_money');
             }
@@ -527,10 +661,117 @@ class CharityTransactionService
 
         $this->validatePackagePayers(
             $packagePayers,
-            ! $data['use_same_package_amount'],
             $charityType,
-            $isInputFamilyMembers
+            $isInputFamilyMembers,
+            $charityType->use_multipliers && ($payMoney || $payRice)
         );
+
+        if ($payRice && $data['is_package']) {
+            $requiresRepresentativeRice = ! $isInputFamilyMembers || $repPayRice;
+            if ($requiresRepresentativeRice) {
+                if ($representativeTotalRice === null || $representativeTotalRice <= 0) {
+                    throw ValidationException::withMessages([
+                        'representative_total_rice' => __('validation.required', ['attribute' => __('messages.total_rice')]),
+                    ]);
+                }
+
+                if ($charityType->total_rice !== null && $representativeTotalRice < (float) $charityType->total_rice) {
+                    throw ValidationException::withMessages([
+                        'representative_total_rice' => __('messages.rice_minimum_value', [
+                            'amount' => $this->formatDecimal((float) $charityType->total_rice),
+                        ]),
+                    ]);
+                }
+            }
+        }
+
+        if ($charityType->use_multipliers && ($payMoney || $payRice)) {
+            if (! $data['is_package']) {
+                if ($inputAmountMoney !== null) {
+                    $inputAmountMoney = $inputAmountMoney * $multiplierCount;
+                }
+                if ($inputAmountRice !== null) {
+                    $inputAmountRice = $inputAmountRice * $multiplierCount;
+                }
+            }
+
+            if ($representativeTotalMoney !== null) {
+                $representativeTotalMoney = $representativeTotalMoney * $multiplierCount;
+            }
+            if ($representativeTotalRice !== null) {
+                $representativeTotalRice = $representativeTotalRice * $multiplierCount;
+            }
+
+            $packagePayers = collect($packagePayers)->map(function ($payer) {
+                $multiplier = (int) ($payer['multiplier_count'] ?? 1);
+                $multiplier = $multiplier > 0 ? $multiplier : 1;
+                $payer['multiplier_count'] = $multiplier;
+
+                if (! empty($payer['is_money']) && isset($payer['total_money'])) {
+                    $payer['total_money'] = (float) $payer['total_money'] * $multiplier;
+                }
+                if (! empty($payer['is_rice']) && isset($payer['total_rice'])) {
+                    $payer['total_rice'] = (float) $payer['total_rice'] * $multiplier;
+                }
+
+                if (empty($payer['is_money']) && empty($payer['is_rice'])) {
+                    $payer['multiplier_count'] = null;
+                }
+
+                return $payer;
+            })->values()->toArray();
+        }
+
+        if ($data['is_package'] && ! $data['use_same_package_amount']) {
+            $data['representative_total_money'] = $representativeTotalMoney;
+        }
+
+        $totalMoney = null;
+        $totalRice = null;
+
+        if ($payMoney) {
+            if ($data['is_package']) {
+                if ($data['use_same_package_amount']) {
+                    $baseEach = (float) ($data['package_amount_each'] ?? 0);
+                    if ($isInputFamilyMembers) {
+                        $repTotal = $baseEach * $multiplierCount;
+                        $payersTotal = collect($packagePayers)->sum(fn ($payer) => (float) ($payer['total_money'] ?? 0));
+                        $totalMoney = $repTotal + $payersTotal;
+                    } else {
+                        $membersCount = (int) ($data['package_members_count'] ?? 0);
+                        $totalMoney = $baseEach * $multiplierCount * max($membersCount, 0);
+                    }
+                } else {
+                    $repTotal = (float) ($representativeTotalMoney ?? 0);
+                    $payersTotal = collect($packagePayers)->sum(fn ($payer) => (float) ($payer['total_money'] ?? 0));
+                    $totalMoney = $repTotal + $payersTotal;
+                }
+            } else {
+                $totalMoney = (float) ($inputAmountMoney ?? 0);
+            }
+        }
+
+        if ($payRice) {
+            if ($data['is_package']) {
+                if ($isInputFamilyMembers) {
+                    $repRiceTotal = (float) ($representativeTotalRice ?? 0);
+                    $payersRiceTotal = collect($packagePayers)->sum(fn ($payer) => (float) ($payer['total_rice'] ?? 0));
+                    $totalRice = $repRiceTotal + $payersRiceTotal;
+                } else {
+                    $membersCount = (int) ($data['package_members_count'] ?? 0);
+                    $repRice = (float) ($representativeTotalRice ?? 0);
+                    $totalRice = $repRice * max($membersCount, 0);
+                }
+            } else {
+                $totalRice = (float) ($inputAmountRice ?? 0);
+            }
+        }
+
+        $data['total_money'] = $payMoney ? $totalMoney : null;
+        $data['total_rice'] = $payRice ? $totalRice : null;
+
+        $detail['amount_money'] = $payMoney ? $totalMoney : null;
+        $detail['amount_rice'] = $payRice ? $totalRice : null;
 
         return [$data, $detail, $packagePayers];
     }
@@ -542,7 +783,10 @@ class CharityTransactionService
         ?float $inputTotalRice,
         ?string $inputNotes,
         bool $isInputFamilyMembers,
-        ?float $representativeTotalMoney
+        ?float $representativeTotalMoney,
+        bool $payMoney,
+        bool $payRice,
+        bool $isPackage
     ): array {
         $normalized = [
             'type' => $charityType->source?->slug,
@@ -559,24 +803,55 @@ class CharityTransactionService
 
         $normalized['amount_money'] = isset($normalized['amount_money']) ? (float) $normalized['amount_money'] : null;
         $normalized['amount_rice'] = isset($normalized['amount_rice']) ? (float) $normalized['amount_rice'] : null;
-        $normalized['is_rice'] = (bool) ($normalized['is_rice'] ?? false);
+        $normalized['is_rice'] = $payRice;
+
+        unset($normalized['is_money']);
+
+        if (! $payMoney && ! $payRice) {
+            throw ValidationException::withMessages([
+                'payment_option' => __('messages.payment_option_required'),
+            ]);
+        }
+
+        if (! $payMoney) {
+            $normalized['amount_money'] = null;
+        }
 
         if (! $normalized['is_rice']) {
             $normalized['amount_rice'] = null;
         }
 
-        if ($normalized['is_rice'] && ($normalized['amount_rice'] === null || $normalized['amount_rice'] <= 0)) {
-            throw ValidationException::withMessages([
-                'total_rice' => __('validation.required', ['attribute' => __('messages.total_rice')]),
-            ]);
-        }
+        if (! $isPackage) {
+            if ($normalized['is_rice'] && ($normalized['amount_rice'] === null || $normalized['amount_rice'] <= 0)) {
+                throw ValidationException::withMessages([
+                    'amount_rice' => __('validation.required', ['attribute' => __('messages.total_rice')]),
+                ]);
+            }
 
-        if ($normalized['amount_money'] !== null) {
-            $this->assertAmountWithinCharityRule($charityType, $normalized['amount_money'], 'total_money');
+            if ($normalized['is_rice'] && $charityType->total_rice !== null) {
+                if ($normalized['amount_rice'] !== null && $normalized['amount_rice'] < (float) $charityType->total_rice) {
+                    throw ValidationException::withMessages([
+                        'amount_rice' => __('messages.rice_minimum_value', [
+                            'amount' => $this->formatDecimal((float) $charityType->total_rice),
+                        ]),
+                    ]);
+                }
+            }
+
+            if ($payMoney && ($normalized['amount_money'] === null || $normalized['amount_money'] <= 0)) {
+                throw ValidationException::withMessages([
+                    'amount_money' => __('validation.required', ['attribute' => __('messages.amount')]),
+                ]);
+            }
+
+            if ($normalized['amount_money'] !== null) {
+                $this->assertAmountWithinCharityRule($charityType, $normalized['amount_money'], 'amount_money');
+            }
         }
 
         if (! $this->isRiceCapableType($charityType->source?->slug)) {
             $normalized['amount_rice'] = null;
+            $normalized['is_rice'] = false;
         }
 
         return $normalized;
@@ -607,19 +882,19 @@ class CharityTransactionService
 
     protected function validatePackagePayers(
         array $packagePayers,
-        bool $requireAmount,
         ?CharityType $charityType = null,
-        bool $requireName = false
+        bool $requireName = false,
+        bool $useMultipliers = false
     ): void
     {
         if (empty($packagePayers)) {
             return;
         }
 
-        foreach ($packagePayers as $payer) {
+        foreach ($packagePayers as $index => $payer) {
             if ($requireName && (! isset($payer['payer_name']) || $payer['payer_name'] === '')) {
                 throw ValidationException::withMessages([
-                    'package_payers' => __('validation.required', ['attribute' => __('messages.payer_name')]),
+                    'package_payers.' . $index . '.payer_name' => __('validation.required', ['attribute' => __('messages.payer_name')]),
                 ]);
             }
 
@@ -627,14 +902,54 @@ class CharityTransactionService
                 continue;
             }
 
-            if ($requireAmount && (! isset($payer['total_money']) || $payer['total_money'] === '')) {
+            $payMoney = array_key_exists('is_money', $payer) ? (bool) $payer['is_money'] : true;
+            $payRice = array_key_exists('is_rice', $payer) ? (bool) $payer['is_rice'] : false;
+
+            if (! $payMoney && ! $payRice) {
                 throw ValidationException::withMessages([
-                    'package_payers' => __('messages.package_payers_invalid_amount'),
+                    'package_payers.' . $index . '.payer_name' => __('messages.payment_option_required'),
                 ]);
             }
 
-            if ($requireAmount && $charityType) {
-                $this->assertAmountWithinCharityRule($charityType, (float) $payer['total_money'], 'package_payers');
+            if ($payMoney && (! isset($payer['total_money']) || $payer['total_money'] === '')) {
+                throw ValidationException::withMessages([
+                    'package_payers.' . $index . '.total_money' => __('messages.package_payers_invalid_amount'),
+                ]);
+            }
+
+            if ($useMultipliers && ($payMoney || $payRice)) {
+                $multiplier = (int) ($payer['multiplier_count'] ?? 0);
+                if ($multiplier < 1) {
+                    throw ValidationException::withMessages([
+                        'package_payers.' . $index . '.multiplier_count' => __('validation.required', ['attribute' => __('messages.total_days')]),
+                    ]);
+                }
+            }
+
+            if ($payRice && (! isset($payer['total_rice']) || $payer['total_rice'] === '')) {
+                throw ValidationException::withMessages([
+                    'package_payers.' . $index . '.total_rice' => __('validation.required', ['attribute' => __('messages.total_rice')]),
+                ]);
+            }
+
+            if ($payRice && isset($payer['total_rice']) && (float) $payer['total_rice'] <= 0) {
+                throw ValidationException::withMessages([
+                    'package_payers.' . $index . '.total_rice' => __('validation.gt.numeric', ['attribute' => __('messages.total_rice'), 'value' => 0]),
+                ]);
+            }
+
+            if ($payMoney && $charityType) {
+                $this->assertAmountWithinCharityRule($charityType, (float) $payer['total_money'], 'package_payers.' . $index . '.total_money');
+            }
+
+            if ($payRice && $charityType && $charityType->total_rice !== null) {
+                if ((float) $payer['total_rice'] < (float) $charityType->total_rice) {
+                    throw ValidationException::withMessages([
+                        'package_payers.' . $index . '.total_rice' => __('messages.rice_minimum_value', [
+                            'amount' => $this->formatDecimal((float) $charityType->total_rice),
+                        ]),
+                    ]);
+                }
             }
         }
     }
@@ -668,6 +983,31 @@ class CharityTransactionService
         }
 
         return $detail;
+    }
+
+    protected function packageRepresentativeRice(CharityTransaction $transaction, int $multiplierCount = 1): ?float
+    {
+        $totalRice = (float) ($transaction->total_rice ?? 0);
+        if ($totalRice <= 0) {
+            return null;
+        }
+
+        $multiplierCount = $multiplierCount > 0 ? $multiplierCount : 1;
+
+        if (! $transaction->is_input_family_members) {
+            $membersCount = (int) ($transaction->package_members_count ?: 1);
+            $divisor = max($membersCount * $multiplierCount, 1);
+            return $totalRice / $divisor;
+        }
+
+        $payersRice = (float) $transaction->packagePayers->sum('total_rice');
+        $representativeTotal = max($totalRice - $payersRice, 0);
+
+        if ($multiplierCount > 1) {
+            $representativeTotal = $representativeTotal / $multiplierCount;
+        }
+
+        return $representativeTotal;
     }
 
     protected function isRiceCapableType(?string $slug): bool

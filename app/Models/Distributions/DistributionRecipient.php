@@ -18,6 +18,8 @@ class DistributionRecipient extends Model
     protected $casts = [
         'distributed_at' => 'datetime',
         'reschedule_at' => 'datetime',
+        'amount_money' => 'float',
+        'amount_rice' => 'float',
     ];
 
     public function distribution(): BelongsTo
@@ -28,6 +30,11 @@ class DistributionRecipient extends Model
     public function resident(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resident_id');
+    }
+
+    public function officer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'officer_id');
     }
 
     public function distributionClass(): BelongsTo
@@ -43,5 +50,10 @@ class DistributionRecipient extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(DistributionRecipientAttachment::class, 'distribution_recipient_id');
+    }
+
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(DistributionRecipientStatusLog::class, 'distribution_recipient_id');
     }
 }

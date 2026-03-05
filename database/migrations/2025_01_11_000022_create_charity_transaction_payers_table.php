@@ -14,7 +14,11 @@ return new class extends Migration
             $table->string('payer_name');
             $table->string('payer_phone')->nullable();
             $table->string('payer_email')->nullable();
-            $table->decimal('total_money', 18, 2)->default(0);
+            $table->boolean('is_money')->default(true);
+            $table->boolean('is_rice')->default(false);
+            $table->unsignedInteger('multiplier_count')->nullable();
+            $table->decimal('total_money', 18,  2)->default(0);
+            $table->decimal('total_rice', 10, 2)->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();
 

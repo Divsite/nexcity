@@ -138,8 +138,12 @@ class CharityDistributionController extends Controller
             'neighborhood_association_id' => ['nullable', 'integer'],
             'charity_type_ids' => ['nullable', 'array'],
             'charity_type_ids.*' => ['integer', 'exists:charity_types,id'],
+            'priority_charity_type_ids' => ['nullable', 'array'],
+            'priority_charity_type_ids.*' => ['integer', 'exists:charity_types,id'],
+            'enforce_priority' => ['nullable', 'boolean'],
             'other_source_name' => ['nullable', 'string', 'max:255'],
             'other_source_amount' => ['nullable', 'numeric', 'min:0'],
+            'other_source_rice' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $this->service->storeFundSource(
@@ -172,6 +176,9 @@ class CharityDistributionController extends Controller
     {
         $data = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'distribution_id' => ['nullable', 'integer'],
+            'distribution_class_id' => ['nullable', 'integer'],
+            'year' => ['nullable', 'integer'],
             'country_id' => ['nullable', 'exists:loc_countries,id'],
             'province_id' => ['nullable', 'exists:loc_provinces,id'],
             'city_id' => ['nullable', 'exists:loc_cities,id'],

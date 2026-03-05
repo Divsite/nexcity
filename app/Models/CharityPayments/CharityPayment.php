@@ -16,6 +16,8 @@ class CharityPayment extends Model
 
     protected $guarded = ['id'];
 
+    public const QRIS_PATH = 'charity-payments/qris';
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);

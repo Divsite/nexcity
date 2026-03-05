@@ -40,7 +40,7 @@
         </span>
     </div>
 
-    <div class="mt-4">
+    <div class="mt-4" v-if="!isInternalClass">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <h6 class="mb-0">{{ __('messages.location') }}</h6>
             <button type="button" class="btn btn-sm btn-soft-secondary" @click="showAdvancedLocation = !showAdvancedLocation">
@@ -137,7 +137,7 @@
         </div>
     </div>
 
-    <div class="mt-4">
+    <div class="mt-4" v-if="!isInternalClass">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <h6 class="mb-0">{{ __('messages.recipients') }}</h6>
             <div class="form-check">
@@ -178,11 +178,14 @@
                 <div v-else class="row g-2">
                     <div class="col-md-6" v-for="resident in filteredResidents" :key="resident.id">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" :id="'resident-' + resident.id" :value="resident.id" v-model="form.recipient_ids">
+                            <input class="form-check-input" type="checkbox" :id="'resident-' + resident.id" :value="resident.id" v-model="form.recipient_ids" :disabled="resident.disabled">
                             <label class="form-check-label" :for="'resident-' + resident.id">
                                 @{{ resident.name }}
                                 <span class="text-muted" v-if="resident.rt || resident.rw">
                                     (RT @{{ resident.rt || '-' }} / RW @{{ resident.rw || '-' }})
+                                </span>
+                                <span class="text-danger" v-if="resident.disabled && resident.assigned_class_name">
+                                    - @{{ resident.assigned_class_name }}
                                 </span>
                             </label>
                         </div>

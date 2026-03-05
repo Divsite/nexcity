@@ -184,6 +184,48 @@
                                     </div>
                                 </div>
 
+                                <div class="alert alert-warning py-2" v-if="(summary.shortage_money || 0) > 0 || (summary.shortage_rice || 0) > 0">
+                                    <div class="fw-semibold mb-1">{{ __('messages.distribution_income_warning') }}</div>
+                                    <div class="small">
+                                        {{ __('messages.distribution_income_total') }}:
+                                        <span class="fw-semibold">@{{ summary.income_money_label || '0' }}</span>
+                                        · {{ __('messages.total_rice') }}:
+                                        <span class="fw-semibold">@{{ summary.income_rice_label || '0,00' }}</span>
+                                    </div>
+                                    <div class="small">
+                                        {{ __('messages.distribution_income_shortage') }}:
+                                        <span class="fw-semibold">@{{ summary.shortage_money_label || '0' }}</span>
+                                        · {{ __('messages.total_rice') }}:
+                                        <span class="fw-semibold">@{{ summary.shortage_rice_label || '0,00' }}</span>
+                                    </div>
+                                    <div class="small" v-if="(summary.shortage_money_per_recipient || 0) > 0">
+                                        {{ __('messages.distribution_income_per_recipient_hint') }}:
+                                        <span class="fw-semibold">@{{ summary.shortage_money_per_recipient_label || '0' }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info py-2" v-if="(summary.suggested_adjustments || []).length">
+                                    <div class="fw-semibold mb-1">{{ __('messages.suggested_adjustment') }}</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>{{ __('messages.distribution_class') }}</th>
+                                                    <th class="text-end">{{ __('messages.current_amount') }}</th>
+                                                    <th class="text-end">{{ __('messages.suggested_amount') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in summary.suggested_adjustments" :key="item.id">
+                                                    <td>@{{ item.name }}</td>
+                                                    <td class="text-end">@{{ item.current_money_label }}</td>
+                                                    <td class="text-end">@{{ item.suggested_money_label }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
                                         <div class="border rounded p-3 h-100">
@@ -257,12 +299,14 @@
                                             <div class="border rounded p-2 h-100">
                                                 <div class="text-muted small">{{ __('messages.used_funds') }}</div>
                                                 <div class="fw-semibold">@{{ fundSummary.used_money_label || '0' }}</div>
+                                                <div class="text-muted small">{{ __('messages.total_rice') }}: @{{ fundSummary.used_rice_label || '0,00' }}</div>
                                             </div>
                                         </div>
                                         <div class="col-md-4">
                                             <div class="border rounded p-2 h-100">
                                                 <div class="text-muted small">{{ __('messages.remaining_funds') }}</div>
                                                 <div class="fw-semibold">@{{ fundSummary.remaining_money_label || '0' }}</div>
+                                                <div class="text-muted small">{{ __('messages.total_rice') }}: @{{ fundSummary.remaining_rice_label || '0,00' }}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -271,6 +315,20 @@
                                         <div class="col-lg-8">
                                             <div class="alert alert-warning mb-2">
                                                 {{ __('messages.fund_sources_sync_note') }}
+                                            </div>
+                                            <div class="border rounded p-2 mb-3">
+                                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                                    <div class="fw-semibold small">{{ __('messages.priority_sources') }}</div>
+                                                    <div class="form-check form-switch form-check-sm">
+                                                        <input class="form-check-input" type="checkbox" id="priority-enforce" v-model="fundForm.enforce_priority">
+                                                        <label class="form-check-label" for="priority-enforce">{{ __('messages.enforce_priority') }}</label>
+                                                    </div>
+                                                </div>
+                                                <select class="form-select form-select-sm" multiple v-model="fundForm.priority_charity_type_ids">
+                                                    <option v-for="item in fundOptions.charity_types" :key="`priority-${item.id}`" :value="item.id">
+                                                        @{{ item.name }}
+                                                    </option>
+                                                </select>
                                             </div>
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <div class="fw-semibold">{{ __('messages.select_sources') }}</div>
@@ -294,10 +352,15 @@
                                                         <div class="text-muted small">
                                                             @{{ item.total_money_label }} · @{{ item.used_money_label }} · @{{ item.remaining_money_label }}
                                                         </div>
+                                                        <div class="text-muted small">
+                                                            {{ __('messages.total_rice') }}: @{{ item.total_rice_label }} · {{ __('messages.used_funds') }}: @{{ item.used_rice_label }} · {{ __('messages.available_funds') }}: @{{ item.remaining_rice_label }}
+                                                        </div>
                                                     </div>
                                                     <div class="text-end">
                                                         <div class="text-muted small">{{ __('messages.allocated') }}: @{{ formatMoney(allocationMap[item.id] || 0) }}</div>
+                                                        <div class="text-muted small">{{ __('messages.allocated') }} ({{ __('messages.total_rice') }}): @{{ formatRice(allocationRiceMap[item.id] || 0) }}</div>
                                                         <div class="text-muted small">{{ __('messages.available_funds') }}: @{{ item.remaining_money_label }}</div>
+                                                        <div class="text-muted small">{{ __('messages.available_funds') }} ({{ __('messages.total_rice') }}): @{{ item.remaining_rice_label }}</div>
                                                     </div>
                                                 </label>
                                             </div>
@@ -309,8 +372,11 @@
                                             <div class="border rounded p-3 mb-3">
                                                 <div class="text-muted small">{{ __('messages.selected_total') }}</div>
                                                 <div class="fw-semibold">@{{ formatMoney(selectedAvailableTotal) }}</div>
+                                                <div class="text-muted small">{{ __('messages.total_rice') }}: @{{ formatRice(selectedAvailableRiceTotal) }}</div>
                                                 <div class="text-muted small mt-2">{{ __('messages.remaining_needed') }}: @{{ formatMoney(remainingNeeded) }}</div>
+                                                <div class="text-muted small">{{ __('messages.remaining_needed') }} ({{ __('messages.total_rice') }}): @{{ formatRice(remainingRiceNeeded) }}</div>
                                                 <div class="text-muted small">{{ __('messages.surplus') }}: @{{ formatMoney(surplusAmount) }}</div>
+                                                <div class="text-muted small">{{ __('messages.surplus') }} ({{ __('messages.total_rice') }}): @{{ formatRice(surplusRice) }}</div>
                                             </div>
                                             <div class="border rounded p-3">
                                                 <div class="fw-semibold mb-2">{{ __('messages.other_source') }}</div>
@@ -328,6 +394,14 @@
                                                 <span class="invalid-feedback d-block" v-if="fundErrors.other_source_amount">
                                                     <strong>@{{ fundErrors.other_source_amount[0] }}</strong>
                                                 </span>
+                                                <label class="form-label mt-2">{{ __('messages.other_source_rice') }}</label>
+                                                <div :class="['input-group', fundErrors.other_source_rice ? 'is-invalid' : '']">
+                                                    <input type="number" step="0.01" min="0" class="form-control" v-model="fundForm.other_source_rice">
+                                                    <span class="input-group-text">{{ __('messages.liter') }}</span>
+                                                </div>
+                                                <span class="invalid-feedback d-block" v-if="fundErrors.other_source_rice">
+                                                    <strong>@{{ fundErrors.other_source_rice[0] }}</strong>
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -344,13 +418,15 @@
                                                 <tr>
                                                     <th>{{ __('messages.source') }}</th>
                                                     <th class="text-end">{{ __('messages.allocated_amount') }}</th>
+                                                    <th class="text-end">{{ __('messages.allocated_rice') }}</th>
                                                     <th class="text-end">{{ __('messages.remaining_amount') }}</th>
+                                                    <th class="text-end">{{ __('messages.remaining_rice') }}</th>
                                                     <th class="text-end">{{ __('messages.actions') }}</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr v-if="fundSources.length === 0">
-                                                    <td colspan="4" class="text-muted">{{ __('messages.data_not_found') }}</td>
+                                                    <td colspan="6" class="text-muted">{{ __('messages.data_not_found') }}</td>
                                                 </tr>
                                                 <tr v-for="item in fundSources" :key="item.id">
                                                     <td>
@@ -358,12 +434,49 @@
                                                         <span v-else>@{{ item.source_name || '-' }}</span>
                                                     </td>
                                                     <td class="text-end">@{{ item.amount_used_label }}</td>
+                                                    <td class="text-end">@{{ item.amount_used_rice_label || '-' }}</td>
                                                     <td class="text-end">@{{ item.remaining_amount_label || fundSourceRemainingLabel(item) }}</td>
+                                                    <td class="text-end">@{{ item.remaining_rice_label || '-' }}</td>
                                                     <td class="text-end">
                                                         <button type="button" class="btn btn-sm btn-soft-danger" @click="removeFundSource(item.id)">
                                                             {{ __('messages.delete') }}
                                                         </button>
                                                     </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="border rounded p-3 mb-3" v-if="(summary.not_distributed_recipients || []).length">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                        <div class="fw-semibold">
+                                            {{ __('messages.not_distributed_recipients') }}
+                                            <span class="text-muted">(@{{ summary.not_distributed_total || 0 }})</span>
+                                        </div>
+                                        <div class="text-muted small">{{ __('messages.based_on_current_filters') }}</div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>{{ __('messages.recipient') }}</th>
+                                                    <th>{{ __('messages.distribution_class') }}</th>
+                                                    <th>{{ __('messages.location') }}</th>
+                                                    <th>{{ __('messages.status_reason') }}</th>
+                                                    <th>{{ __('messages.status') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in summary.not_distributed_recipients" :key="item.id">
+                                                    <td>@{{ item.name }}</td>
+                                                    <td>@{{ item.class_name }}</td>
+                                                    <td>
+                                                        <span v-if="item.rt || item.rw">RT @{{ item.rt || '-' }} / RW @{{ item.rw || '-' }}</span>
+                                                        <span v-else>-</span>
+                                                    </td>
+                                                    <td>@{{ item.status_reason }}</td>
+                                                    <td>@{{ item.status_label }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -383,9 +496,7 @@
                             <livewire:distributions.distribution-table theme="bootstrap-5"/>
                         </div>
                         <div class="tab-pane fade" id="charity-tab-finance" role="tabpanel">
-                            <div class="text-muted py-4">
-                                {{ __('messages.placeholder') }}
-                            </div>
+                            <livewire:charity-expenses.charity-expense-modal />
                         </div>
                     </div>
                 </div>
@@ -446,6 +557,9 @@
                 if (value === 'distributions') {
                     return 'distributions';
                 }
+                if (value === 'finance') {
+                    return 'finance';
+                }
                 if (value === 'charities' || value === 'transactions') {
                     return 'transactions';
                 }
@@ -457,7 +571,9 @@
                 if (!tab) {
                     return;
                 }
-                const targetId = tab === 'distributions' ? '#charity-tab-distributions' : '#charity-tab-transactions';
+                const targetId = tab === 'distributions'
+                    ? '#charity-tab-distributions'
+                    : (tab === 'finance' ? '#charity-tab-finance' : '#charity-tab-transactions');
                 const trigger = document.querySelector(`[data-bs-target="${targetId}"]`);
                 if (trigger && window.bootstrap) {
                     window.bootstrap.Tab.getOrCreateInstance(trigger).show();
@@ -485,6 +601,10 @@
                         window.sessionStorage.setItem(storageKey, 'distributions');
                         url.searchParams.set('tab', 'distributions');
                         url.hash = '#charity-tab-distributions';
+                    } else if (target === '#charity-tab-finance') {
+                        window.sessionStorage.setItem(storageKey, 'finance');
+                        url.searchParams.set('tab', 'finance');
+                        url.hash = '#charity-tab-finance';
                     } else if (target === '#charity-tab-transactions') {
                         window.sessionStorage.setItem(storageKey, 'transactions');
                         url.searchParams.set('tab', 'charities');
@@ -508,4 +628,5 @@
     @vite('resources/js/views/charities/summary.js')
     @vite('resources/js/views/distributions/form.js')
     @vite('resources/js/views/distributions/summary.js')
+    @vite('resources/js/views/charity-expenses/form.js')
 @endpush

@@ -14,7 +14,8 @@ return new class extends Migration
             $table->foreignId('distribution_class_source_id')->nullable()->constrained('m_distribution_class_sources')->nullOnDelete();
             $table->unsignedSmallInteger('year')->nullable();
             $table->decimal('get_money', 18, 2)->nullable();
-            $table->unsignedInteger('get_rice')->nullable();
+            $table->decimal('get_rice', 10, 2)->nullable();
+            $table->boolean('is_internal')->default(false);
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

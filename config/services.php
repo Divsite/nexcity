@@ -45,5 +45,7 @@ return [
 
     'openclaw' => [
         'api_key' => env('OPENCLAW_API_KEY'),
+        'webhook_url' => env('OPENCLAW_WEBHOOK_URL'),
+        'webhook_token' => env('OPENCLAW_WEBHOOK_TOKEN'),
     ],
 ];

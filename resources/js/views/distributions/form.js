@@ -62,6 +62,23 @@ createApp({
                 this.form.manual_recipients = [];
             }
         },
+        selectedClass(value) {
+            if (!value) {
+                return;
+            }
+
+            if (value.is_internal) {
+                this.form.use_manual_recipients = false;
+                this.form.recipient_ids = [];
+                this.form.manual_recipients = [];
+            }
+        },
+        'form.distribution_class_id'() {
+            this.loadResidents();
+        },
+        'form.year'() {
+            this.loadResidents();
+        },
     },
     computed: {
         selectedClass() {
@@ -70,6 +87,9 @@ createApp({
                 return null;
             }
             return this.options.distribution_classes.find((item) => Number(item.id) === selectedId) || null;
+        },
+        isInternalClass() {
+            return Boolean(this.selectedClass && this.selectedClass.is_internal);
         },
         filteredResidents() {
             const keyword = (this.residentSearch || '').toLowerCase();
@@ -80,7 +100,9 @@ createApp({
         },
         allVisibleSelected: {
             get() {
-                const visibleIds = this.filteredResidents.map((resident) => Number(resident.id));
+                const visibleIds = this.filteredResidents
+                    .filter((resident) => !resident.disabled)
+                    .map((resident) => Number(resident.id));
                 if (visibleIds.length === 0) {
                     return false;
                 }
@@ -88,7 +110,9 @@ createApp({
                 return visibleIds.every((id) => selected.includes(id));
             },
             set(value) {
-                const visibleIds = this.filteredResidents.map((resident) => Number(resident.id));
+                const visibleIds = this.filteredResidents
+                    .filter((resident) => !resident.disabled)
+                    .map((resident) => Number(resident.id));
                 const selected = this.form.recipient_ids.map((id) => Number(id));
                 if (value) {
                     const merged = [...selected, ...visibleIds];
@@ -109,6 +133,17 @@ createApp({
         if (editId) {
             this.loadEditForm(editId);
         }
+
+        const modalEl = document.getElementById('distribution-modal');
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', () => {
+                this.clearEditParam();
+            });
+            modalEl.addEventListener('hidden.bs.modal', () => {
+                this.resetForm();
+                this.clearEditParam();
+            });
+        }
     },
     methods: {
         formatMoney(value) {
@@ -119,8 +154,12 @@ createApp({
             }).format(amount);
         },
         formatRice(value) {
-            const amount = value ? Number(value) : 0;
-            return `${amount} ${this.labels.liter || 'liter'}`;
+            const amount = Number(value || 0);
+            const formatted = new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+            }).format(Number.isNaN(amount) ? 0 : amount);
+            return `${formatted} ${this.labels.liter || 'liter'}`;
         },
         async initializeLocations() {
             if (this.form.country_id) {
@@ -251,18 +290,31 @@ createApp({
         },
         async loadResidents() {
             this.loadingResidents = true;
-            this.form.recipient_ids = [];
+            if (!this.form.id) {
+                this.form.recipient_ids = [];
+            }
             try {
-                const params = {
-                    search: this.residentSearch || undefined,
-                    country_id: this.form.country_id || undefined,
-                    province_id: this.form.province_id || undefined,
-                    city_id: this.form.city_id || undefined,
-                    district_id: this.form.district_id || undefined,
-                    village_id: this.form.village_id || undefined,
-                    citizens_association_id: this.form.citizens_association_id || undefined,
-                    neighborhood_association_id: this.form.neighborhood_association_id || undefined,
-                };
+                const params = {};
+                if (this.form.id) {
+                    params.distribution_id = this.form.id;
+                }
+                if (this.form.distribution_class_id) {
+                    params.distribution_class_id = this.form.distribution_class_id;
+                }
+                if (this.form.year) {
+                    params.year = this.form.year;
+                }
+                if (this.residentSearch) {
+                    params.search = this.residentSearch;
+                }
+                if (this.form.country_id) params.country_id = this.form.country_id;
+                if (this.form.province_id) params.province_id = this.form.province_id;
+                if (this.form.city_id) params.city_id = this.form.city_id;
+                if (this.form.district_id) params.district_id = this.form.district_id;
+                if (this.form.village_id) params.village_id = this.form.village_id;
+                if (this.form.citizens_association_id) params.citizens_association_id = this.form.citizens_association_id;
+                if (this.form.neighborhood_association_id) params.neighborhood_association_id = this.form.neighborhood_association_id;
+
                 const { data } = await axios.get(this.routes.residents, { params });
                 this.residents = Array.isArray(data) ? data : [];
             } catch (error) {
@@ -310,6 +362,18 @@ createApp({
                 return;
             }
             window.bootstrap.Modal.getOrCreateInstance(element).hide();
+            this.clearEditParam();
+        },
+        clearEditParam() {
+            try {
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('edit')) {
+                    url.searchParams.delete('edit');
+                    window.history.replaceState({}, '', url.toString());
+                }
+            } catch (error) {
+                // ignore
+            }
         },
         notifySuccess(message) {
             if (window.Swal) {
