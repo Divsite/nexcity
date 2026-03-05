@@ -376,36 +376,13 @@ class CharityTransactionTable extends DataTableComponent
     protected function formatCurrency($value): string
     {
         $currency = strtoupper((string) config('money.defaultCurrency', 'IDR'));
-        $amount = $this->normalizeMoneyAmount($value);
+        $amount = (float) ($value ?? 0);
 
         try {
             return Money::{$currency}($amount)->format(App::currentLocale());
         } catch (\Throwable $exception) {
             return Money::IDR($amount)->format(App::currentLocale());
         }
-    }
-
-    protected function normalizeMoneyAmount($value): string
-    {
-        if ($value === null || $value === '') {
-            return '0';
-        }
-
-        $raw = trim((string) $value);
-
-        // Prevent scientific notation (e.g. 2.400000005083E+14) from breaking money parser.
-        if (stripos($raw, 'e') !== false) {
-            return sprintf('%.0f', (float) $raw);
-        }
-
-        // Keep only numeric characters and decimal separator, then normalize to integer amount.
-        $normalized = preg_replace('/[^0-9.\-]/', '', $raw) ?: '0';
-
-        if (str_contains($normalized, '.')) {
-            return (string) round((float) $normalized);
-        }
-
-        return $normalized;
     }
 
     protected function formatQuantity($value): string
