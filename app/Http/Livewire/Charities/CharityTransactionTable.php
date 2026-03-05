@@ -98,8 +98,6 @@ class CharityTransactionTable extends DataTableComponent
                         . ' · ' . __('messages.draft') . ': ' . $totals['draft_count']
                         . ' · ' . __('messages.cancelled') . ': ' . $totals['cancelled_count'];
                 }),
-            Column::make(__('messages.received_by'), 'receivedBy.name')
-                ->label(fn ($row) => $row->receivedBy?->name ?? '-'),
             Column::make(__('messages.created_at'), 'created_at')
                 ->sortable()
                 ->format(fn ($value) => $value ? $value->format('d/m/Y h:i A ') : '-'),
