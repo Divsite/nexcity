@@ -27,7 +27,8 @@ class OrganizationOfficerSeeder extends Seeder
         $names = [
             'Arju', 'Fatia', 'Ina', 'Makis', 'Tata', 'Ayyub', 'Hamdan', 'Ninis', 'Denis', 'Hiban',
             'Ucup', 'Alin', 'Kesya', 'Sule', 'Barka', 'Pussel', 'Ripal', 'Rhafi', 'Piul', 'Erlang',
-            'Muamar', 'Cilla', 'Nabil', 'Rifal',
+            'Muamar', 'Cilla', 'Nabil', 'Rifal', 'Ica', 'Syahrul', 'Fadil', 'Damar', 'Agung', 'Azzam',
+            'Azka', 'Izzati',
         ];
 
         foreach ($names as $name) {
@@ -61,6 +62,14 @@ class OrganizationOfficerSeeder extends Seeder
                     'joined_at' => now(),
                 ],
             ]);
+
+            $user->mosqueProfile()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'organization_id' => $organization->id,
+                    'position' => 'Petugas Zakat',
+                ]
+            );
         }
     }
 

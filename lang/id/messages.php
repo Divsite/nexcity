@@ -457,6 +457,8 @@ return [
     'total_recipients' => 'Total Penerima',
     'recipients' => 'Penerima',
     'recipient' => 'Penerima',
+    'phone' => 'Telepon',
+    'zakat_officer' => 'Petugas Zakat',
     'officers' => 'Petugas',
     'progress' => 'Progres',
     'distributed' => 'Tersalurkan',

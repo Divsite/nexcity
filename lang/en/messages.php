@@ -452,6 +452,8 @@ return [
     'total_recipients' => 'Total Recipients',
     'recipients' => 'Recipients',
     'recipient' => 'Recipient',
+    'phone' => 'Phone',
+    'zakat_officer' => 'Zakat Officer',
     'officers' => 'Officers',
     'progress' => 'Progress',
     'distributed' => 'Distributed',

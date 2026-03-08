@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
 
@@ -1023,12 +1024,21 @@ class CharityTransactionService
         }
 
         $membership = $user->organizationMemberships()
-            ->where('is_primary', true)
             ->where('level_slug', 'like', 'mosque-%')
+            ->orderByDesc('is_primary')
+            ->orderByDesc('id')
             ->first();
 
         if (! $membership) {
-            return null;
+            $profileOrgId = $user->mosqueProfile?->organization_id;
+            if (! $profileOrgId) {
+                return null;
+            }
+
+            return [
+                'organization_id' => $profileOrgId,
+                'organization_name' => $user->mosqueProfile?->organization?->name,
+            ];
         }
 
         return [

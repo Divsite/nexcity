@@ -695,7 +695,8 @@ class CharityDistributionService
                 'id' => $member->user_id,
                 'name' => $member->user?->name,
                 'level_slug' => $member->level_slug,
-                'position' => $member->user?->mosqueProfile?->position,
+                'position' => $member->user?->mosqueProfile?->position
+                    ?? ($member->level_slug === 'mosque-officer' ? __('messages.zakat_officer') : null),
             ])
             ->filter(fn ($item) => ! empty($item['id']))
             ->values()
@@ -804,10 +805,19 @@ class CharityDistributionService
         $membership = $user->organizationMemberships()
             ->where('level_slug', 'like', 'mosque-%')
             ->orderByDesc('is_primary')
+            ->orderByDesc('id')
             ->first();
 
         if (! $membership) {
-            return null;
+            $profileOrgId = $user->mosqueProfile?->organization_id;
+            if (! $profileOrgId) {
+                return null;
+            }
+
+            return [
+                'organization_id' => $profileOrgId,
+                'organization_name' => $user->mosqueProfile?->organization?->name,
+            ];
         }
 
         return [

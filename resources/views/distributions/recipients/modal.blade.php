@@ -76,10 +76,10 @@
                         <input type="file"
                                class="form-control @error('attachments.*') is-invalid @enderror"
                                wire:model="attachments"
-                               multiple
-                               accept="image/*">
-                        @error('attachments.*') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                               accept="image/*"
+                               capture="environment">
                         @error('attachments') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        @error('attachments.*') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         <div class="form-text">{{ __('messages.file_extension_png_jpeg_jpg') }}</div>
                     </div>
                 @endif

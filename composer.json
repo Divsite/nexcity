@@ -21,6 +21,7 @@
         "maatwebsite/excel": "^3.1",
         "mhmiton/laravel-modules-livewire": "1.6.0",
         "nwidart/laravel-modules": "^10.0",
+        "opcodesio/log-viewer": "^3.23",
         "propaganistas/laravel-phone": "^5.0",
         "rappasoft/laravel-authentication-log": "^4.0",
         "rappasoft/laravel-livewire-tables": "^3.5",

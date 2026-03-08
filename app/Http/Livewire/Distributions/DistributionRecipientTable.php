@@ -236,11 +236,19 @@ class DistributionRecipientTable extends DataTableComponent
         }
 
         if (! empty($this->attachments)) {
-            $this->validate([
-                'attachments.*' => ['image', 'max:2048'],
-            ], [], [
-                'attachments.*' => __('messages.documentation_photos'),
-            ]);
+            if (is_array($this->attachments)) {
+                $this->validate([
+                    'attachments.*' => ['image', 'max:5120'],
+                ], [], [
+                    'attachments.*' => __('messages.documentation_photos'),
+                ]);
+            } else {
+                $this->validate([
+                    'attachments' => ['image', 'max:5120'],
+                ], [], [
+                    'attachments' => __('messages.documentation_photos'),
+                ]);
+            }
         }
 
         $payload = [
@@ -463,7 +471,8 @@ class DistributionRecipientTable extends DataTableComponent
             $attachment->delete();
         });
 
-        foreach ($this->attachments as $file) {
+        $files = is_array($this->attachments) ? $this->attachments : [$this->attachments];
+        foreach ($files as $file) {
             $fileName = \Illuminate\Support\Str::random(40) . '.' . $file->getClientOriginalExtension();
             Storage::disk('uploads')->putFileAs(DistributionRecipientAttachment::UPLOAD_PATH, $file, $fileName);
             $path = DistributionRecipientAttachment::UPLOAD_PATH . '/' . $fileName;
