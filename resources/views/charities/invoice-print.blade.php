@@ -1,7 +1,6 @@
 @php
     $organization = $transaction->organization;
-    $logoPath = $organization?->profile?->logo_path ?? null;
-    $logoUrl = $logoPath ? asset('uploads/' . ltrim($logoPath, '/')) : null;
+    $logoUrl = $organization?->profile?->logo_url;
     $moneyTotal = $transaction->detailMoneyAmount();
     $riceTotal = $transaction->detailRiceAmount();
 @endphp
@@ -15,7 +14,22 @@
         body { font-family: Arial, sans-serif; font-size: 12px; color: #000; }
         .receipt { width: 58mm; margin: 0 auto; }
         .center { text-align: center; }
-        .logo { max-width: 40mm; margin: 0 auto 6px; }
+        .logo-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fff;
+            padding: 4px;
+            border-radius: 4px;
+            margin: 0 auto 6px;
+        }
+        .logo {
+            display: block;
+            max-width: 20mm;
+            max-height: 20mm;
+            object-fit: contain;
+        }
+        .org-name { font-weight: 700; }
         .divider { border-top: 1px dashed #000; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 2px 0; vertical-align: top; }
@@ -32,10 +46,12 @@
     <div class="receipt">
         <div class="center">
             @if($logoUrl)
-                <img src="{{ $logoUrl }}" class="logo" alt="{{ $organization?->name }}">
+                <div class="logo-wrap">
+                    <img src="{{ $logoUrl }}" class="logo" alt="{{ $organization?->name }}">
+                </div>
             @endif
-            <div class="fw-semibold">{{ $organization?->name ?? '-' }}</div>
-            <div>{{ $organization?->mosqueProfile?->address ?? $organization?->profile?->address ?? '' }}</div>
+            <div class="org-name">{{ $organization?->name ?? '-' }}</div>
+            <div>{{ $organization?->mosqueProfile?->address_line ?? $organization?->profile?->address_line ?? '' }}</div>
         </div>
 
         <div class="divider"></div>
