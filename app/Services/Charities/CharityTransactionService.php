@@ -190,11 +190,13 @@ class CharityTransactionService
         $context = $this->partnerContext();
         $organizationId = $organizationId ?: ($context['organization_id'] ?? null);
 
-        $rows = $this->transactionBaseQuery(['organization_id' => $organizationId])
+        $transactions = $this->transactionBaseQuery(['organization_id' => $organizationId])
             ->paid()
             ->withCharityRelations()
             ->createdOn($recapDate->toDateString())
-            ->get()
+            ->get();
+
+        $rows = $transactions
             ->groupBy(fn (CharityTransaction $transaction) => $transaction->charity_type_id ?: 0)
             ->map(function ($items) {
                 $first = $items->first();
@@ -223,6 +225,23 @@ class CharityTransactionService
             ->values();
 
         $currency = $this->currencyCode();
+        $paymentMethodLabels = CharityTransaction::paymentMethodLabels();
+        $paymentMethodTotals = collect([
+            CharityTransaction::PAYMENT_METHOD_CASH,
+            CharityTransaction::PAYMENT_METHOD_TRANSFER,
+            CharityTransaction::PAYMENT_METHOD_QRIS,
+        ])->map(function (string $method) use ($transactions, $paymentMethodLabels, $currency) {
+            $totalMoney = (float) $transactions
+                ->where('payment_method', $method)
+                ->sum(fn (CharityTransaction $transaction) => $transaction->detailMoneyAmount());
+
+            return [
+                'method' => $method,
+                'label' => $paymentMethodLabels[$method] ?? $method,
+                'total_money' => $totalMoney,
+                'total_money_label' => $this->formatMoney($totalMoney, $currency),
+            ];
+        })->values();
 
         return [
             'rows' => $rows,
@@ -232,6 +251,7 @@ class CharityTransactionService
             'totalMoneyLabel' => $this->formatMoney((float) $rows->sum('total_money'), $currency),
             'totalRice' => (float) $rows->sum('total_rice'),
             'totalCount' => (int) $rows->sum('count'),
+            'paymentMethodTotals' => $paymentMethodTotals,
             'currencyCode' => $currency,
         ];
     }
@@ -247,6 +267,7 @@ class CharityTransactionService
             'total_rice' => $summary['totalRice'],
             'total_rice_label' => $this->formatDecimal((float) $summary['totalRice']),
             'total_transactions' => $summary['totalCount'],
+            'payment_method_totals' => $summary['paymentMethodTotals'],
             'rows' => $summary['rows'],
             'currency' => $summary['currencyCode'],
         ];
