@@ -259,6 +259,13 @@ class CharityTransactionService
     public function dailySummaryByOrganization(int $organizationId, ?string $date = null): array
     {
         $summary = $this->dailyRecapData($date, $organizationId);
+        $historyConfig = $this->dailySummaryHistoryConfig();
+        $moneyHistory = $this->dailyMoneyHistoryByOrganization(
+            $organizationId,
+            Carbon::parse($summary['recapDate'])->startOfDay(),
+            $historyConfig['mode'],
+            $historyConfig['days']
+        );
 
         return [
             'date' => $summary['recapDate']->toDateString(),
@@ -268,9 +275,64 @@ class CharityTransactionService
             'total_rice_label' => $this->formatDecimal((float) $summary['totalRice']),
             'total_transactions' => $summary['totalCount'],
             'payment_method_totals' => $summary['paymentMethodTotals'],
+            'money_history_mode' => $historyConfig['mode'],
+            'money_history_days' => $historyConfig['days'],
+            'money_history' => $moneyHistory,
             'rows' => $summary['rows'],
             'currency' => $summary['currencyCode'],
         ];
+    }
+
+    protected function dailyMoneyHistoryByOrganization(
+        int $organizationId,
+        Carbon $baseDate,
+        string $mode = 'rolling_days',
+        int $days = 10
+    ): array
+    {
+        $offsets = $mode === 'month_to_date'
+            ? range(0, max($baseDate->day - 1, 0))
+            : range(0, max($days - 1, 0));
+
+        return collect($offsets)
+            ->map(function (int $offset) use ($organizationId, $baseDate) {
+                $targetDate = $baseDate->copy()->subDays($offset);
+                $totalMoney = $this->dailyMoneyTotalForOrganizationAndDate($organizationId, $targetDate);
+
+                return [
+                    'date' => $targetDate->toDateString(),
+                    'date_label' => $targetDate->translatedFormat('l, d F Y'),
+                    'total_money' => $totalMoney,
+                    'total_money_label' => $this->formatMoney($totalMoney),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function dailySummaryHistoryConfig(): array
+    {
+        $mode = (string) config('charity.daily_summary.history_mode', 'rolling_days');
+        $days = max((int) config('charity.daily_summary.history_days', 10), 1);
+
+        if (! in_array($mode, ['rolling_days', 'month_to_date'], true)) {
+            $mode = 'rolling_days';
+        }
+
+        return [
+            'mode' => $mode,
+            'days' => $days,
+        ];
+    }
+
+    protected function dailyMoneyTotalForOrganizationAndDate(int $organizationId, Carbon $date): float
+    {
+        return (float) $this->transactionBaseQuery(['organization_id' => $organizationId])
+            ->paid()
+            ->withCharityRelations()
+            ->createdOn($date->toDateString())
+            ->get()
+            ->sum(fn (CharityTransaction $transaction) => $transaction->detailMoneyAmount());
     }
 
     public function formPayload(CharityTransaction $transaction, bool $modal = false): array
