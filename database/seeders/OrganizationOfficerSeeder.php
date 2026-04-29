@@ -28,7 +28,7 @@ class OrganizationOfficerSeeder extends Seeder
             'Arju', 'Fatia', 'Ina', 'Makis', 'Tata', 'Ayyub', 'Hamdan', 'Ninis', 'Denis', 'Hiban',
             'Ucup', 'Alin', 'Kesya', 'Sule', 'Barka', 'Pussel', 'Ripal', 'Rhafi', 'Piul', 'Erlang',
             'Muamar', 'Cilla', 'Nabil', 'Rifal', 'Ica', 'Syahrul', 'Fadil', 'Damar', 'Agung', 'Azzam',
-            'Azka', 'Izzati',
+            'Azka', 'Izzati', 'Samsul', 'Fahri', 'Anggi', 'Rizki', 'Ibnu',
         ];
 
         foreach ($names as $name) {

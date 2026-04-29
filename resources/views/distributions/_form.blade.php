@@ -29,12 +29,38 @@
     <div class="mt-4">
         <div class="d-flex align-items-center justify-content-between mb-2">
             <h6 class="mb-0">{{ __('messages.officers') }}</h6>
+            <div class="text-muted small">@{{ form.officer_ids.length }} {{ __('messages.selected') }}</div>
         </div>
-        <select class="form-select" multiple v-model="form.officer_ids">
-            <option v-for="officer in options.officers" :key="officer.id" :value="officer.id">
-                @{{ officer.name }} <span v-if="officer.position">- @{{ officer.position }}</span>
-            </option>
-        </select>
+        <div class="border rounded p-3">
+            <div class="row g-2 align-items-center mb-3">
+                <div class="col-md-8">
+                    <input type="text" class="form-control" v-model="officerSearch" :placeholder="labels.search">
+                </div>
+                <div class="col-md-4" v-if="filteredOfficers.length">
+                    <div class="form-check mt-2 mt-md-0">
+                        <input class="form-check-input" type="checkbox" id="selectAllOfficers" v-model="allVisibleOfficersSelected">
+                        <label class="form-check-label" for="selectAllOfficers">
+                            {{ __('messages.select_all') }} (@{{ filteredOfficers.length }})
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="filteredOfficers.length === 0" class="text-muted">
+                {{ __('messages.no_data_available') }}
+            </div>
+            <div v-else class="row g-2" style="max-height: 260px; overflow-y: auto;">
+                <div class="col-md-6" v-for="officer in filteredOfficers" :key="officer.id">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" :id="'officer-' + officer.id" :value="officer.id" v-model="form.officer_ids">
+                        <label class="form-check-label" :for="'officer-' + officer.id">
+                            @{{ officer.name }}
+                            <span class="text-muted" v-if="officer.position">- @{{ officer.position }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
         <span class="invalid-feedback d-block" v-if="errors.officer_ids">
             <strong>@{{ errors.officer_ids[0] }}</strong>
         </span>

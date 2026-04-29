@@ -34,6 +34,7 @@ createApp({
             loadingResidents: false,
             residents: [],
             residentSearch: '',
+            officerSearch: '',
             showAdvancedLocation: false,
             locationOptions: {
                 provinces: [],
@@ -90,6 +91,39 @@ createApp({
         },
         isInternalClass() {
             return Boolean(this.selectedClass && this.selectedClass.is_internal);
+        },
+        filteredOfficers() {
+            const keyword = (this.officerSearch || '').toLowerCase().trim();
+            const officers = Array.isArray(this.options.officers) ? this.options.officers : [];
+            if (!keyword) {
+                return officers;
+            }
+            return officers.filter((officer) => {
+                const haystack = [officer.name, officer.position]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                return haystack.includes(keyword);
+            });
+        },
+        allVisibleOfficersSelected: {
+            get() {
+                const visibleIds = this.filteredOfficers.map((officer) => Number(officer.id));
+                if (visibleIds.length === 0) {
+                    return false;
+                }
+                const selected = this.form.officer_ids.map((id) => Number(id));
+                return visibleIds.every((id) => selected.includes(id));
+            },
+            set(value) {
+                const visibleIds = this.filteredOfficers.map((officer) => Number(officer.id));
+                const selected = this.form.officer_ids.map((id) => Number(id));
+                if (value) {
+                    this.form.officer_ids = Array.from(new Set([...selected, ...visibleIds]));
+                } else {
+                    this.form.officer_ids = selected.filter((id) => !visibleIds.includes(id));
+                }
+            },
         },
         filteredResidents() {
             const keyword = (this.residentSearch || '').toLowerCase();
@@ -354,6 +388,7 @@ createApp({
             this.form.manual_recipients = [];
             this.form.use_manual_recipients = false;
             this.form.officer_ids = [];
+            this.officerSearch = '';
             this.errors = {};
         },
         closeModal() {
@@ -422,6 +457,7 @@ createApp({
             this.options = payloadData.options || this.options;
             this.routes = payloadData.routes || this.routes;
             this.errors = {};
+            this.officerSearch = '';
             this.showAdvancedLocation = false;
             this.initializeLocations().then(() => {
                 this.loadResidents();

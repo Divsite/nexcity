@@ -283,6 +283,22 @@ class UserSeeder extends Seeder
                 'role' => 'rt_admin',
             ],
 
+            // RT 02 RW 04
+            [
+                'name' => 'Hendra Gunawan',
+                'email' => 'rt02rw04.superadmin@nexcity.local',
+                'username' => 'rt02rw04.superadmin',
+                'role' => 'rt_admin',
+            ],
+
+            // RT 03 RW 04
+            [
+                'name' => 'Fajar Nugroho',
+                'email' => 'rt03rw04.superadmin@nexcity.local',
+                'username' => 'rt03rw04.superadmin',
+                'role' => 'rt_admin',
+            ],
+
             // RT 04
             [
                 'name' => 'Gilang Prabowo',

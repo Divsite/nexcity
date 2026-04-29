@@ -39,16 +39,22 @@ class OrganizationSeeder extends Seeder
         $district = District::where('code', '367404')->first();
         $village = Village::where('code', '3674041004')->first();
         $rw03 = CitizensAssociation::where('village_id', $village?->id)->where('slug', 'rw003')->first();
+        $rw04 = CitizensAssociation::where('village_id', $village?->id)->where('slug', 'rw004')->first();
 
-        if (! $province || ! $city || ! $district || ! $village || ! $rw03) {
+        if (! $province || ! $city || ! $district || ! $village || ! $rw03 || ! $rw04) {
             $this->command?->warn('Location master data missing. Run LocationSeeder first.');
 
             return;
         }
 
-        $neighborhoods = NeighborhoodAssociation::where('citizens_association_id', $rw03->id)
-            ->get()
-            ->keyBy('number');
+        $neighborhoodsByRw = [
+            '003' => NeighborhoodAssociation::where('citizens_association_id', $rw03->id)
+                ->get()
+                ->keyBy('number'),
+            '004' => NeighborhoodAssociation::where('citizens_association_id', $rw04->id)
+                ->get()
+                ->keyBy('number'),
+        ];
 
         $residenceStatuses = ResidenceStatus::all()->keyBy('slug');
         $maritalStatuses = MaritalStatus::all()->keyBy('slug');
@@ -108,14 +114,17 @@ class OrganizationSeeder extends Seeder
             return [$slug => $record];
         });
 
-        $locationIds = function (?string $rtCode) use ($province, $city, $district, $village, $rw03, $neighborhoods) {
+        $locationIds = function (?string $rtCode, string $rwNumber = '003') use ($province, $city, $district, $village, $rw03, $rw04, $neighborhoodsByRw) {
+            $citizensAssociation = $rwNumber === '004' ? $rw04 : $rw03;
+            $neighborhoods = $neighborhoodsByRw[$rwNumber] ?? collect();
+
             return [
                 'country_id' => $province->country_id,
                 'province_id' => $province->id,
                 'city_id' => $city->id,
                 'district_id' => $district->id,
                 'village_id' => $village->id,
-                'citizens_association_id' => $rw03->id,
+                'citizens_association_id' => $citizensAssociation->id,
                 'neighborhood_association_id' => $rtCode && $neighborhoods->has($rtCode)
                     ? $neighborhoods->get($rtCode)->id
                     : null,
@@ -1062,6 +1071,74 @@ class OrganizationSeeder extends Seeder
                             'marital_status_slug' => 'single',
                             'occupation' => 'Mahasiswi',
                         ]),
+                    ],
+                ],
+            ],
+            [
+                'name' => 'RT 02 RW 04 Jurang Mangu Barat',
+                'slug' => 'rt-02-rw04-jurang-mangu-barat',
+                'type' => Organization::TYPE_RT,
+                'category_slug' => 'residential',
+                'status' => 'active',
+                'email' => 'rt02rw04@nexcity.local',
+                'phone' => '+62 812 9000 2002',
+                'timezone' => 'Asia/Jakarta',
+                'location' => $locationIds('002', '004'),
+                'profile' => $organizationProfileData('002', 'Posko RT 02 RW 04 - Jl. Flamboyan No. 2', [
+                    'description' => 'RT 02 RW 04 fokus pada administrasi dan pelayanan warga berbasis digital.',
+                ]),
+                'rt_profile' => $rtProfileData([
+                    'office_phone' => '+62 812 9000 2002',
+                    'office_address' => 'Posko RT 02 RW 04 - Jl. Flamboyan No. 2',
+                    'notes' => 'Periode kepengurusan RT 02 RW 04 Jurang Mangu Barat.',
+                ]),
+                'levels' => $rtLevels,
+                'members' => [
+                    [
+                        'email' => 'rt02rw04.superadmin@nexcity.local',
+                        'role' => 'rt_admin',
+                        'level_slug' => 'rt-superadmin',
+                        'is_primary' => true,
+                        'rt_profile' => [
+                            'position' => 'Ketua RT',
+                            'responsibility_area' => 'Koordinasi program RT dan pelayanan warga',
+                            'service_start_date' => now()->subYears(2)->toDateString(),
+                            'phone' => '+62 811 0400 2002',
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'RT 03 RW 04 Jurang Mangu Barat',
+                'slug' => 'rt-03-rw04-jurang-mangu-barat',
+                'type' => Organization::TYPE_RT,
+                'category_slug' => 'residential',
+                'status' => 'active',
+                'email' => 'rt03rw04@nexcity.local',
+                'phone' => '+62 812 9000 2003',
+                'timezone' => 'Asia/Jakarta',
+                'location' => $locationIds('003', '004'),
+                'profile' => $organizationProfileData('003', 'Posko RT 03 RW 04 - Jl. Flamboyan No. 4', [
+                    'description' => 'RT 03 RW 04 fokus pada layanan warga dan pengelolaan program kerja RT.',
+                ]),
+                'rt_profile' => $rtProfileData([
+                    'office_phone' => '+62 812 9000 2003',
+                    'office_address' => 'Posko RT 03 RW 04 - Jl. Flamboyan No. 4',
+                    'notes' => 'Periode kepengurusan RT 03 RW 04 Jurang Mangu Barat.',
+                ]),
+                'levels' => $rtLevels,
+                'members' => [
+                    [
+                        'email' => 'rt03rw04.superadmin@nexcity.local',
+                        'role' => 'rt_admin',
+                        'level_slug' => 'rt-superadmin',
+                        'is_primary' => true,
+                        'rt_profile' => [
+                            'position' => 'Ketua RT',
+                            'responsibility_area' => 'Koordinasi program RT dan pelayanan warga',
+                            'service_start_date' => now()->subYears(2)->toDateString(),
+                            'phone' => '+62 811 0400 2003',
+                        ],
                     ],
                 ],
             ],

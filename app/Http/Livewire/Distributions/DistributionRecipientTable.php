@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Distributions;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Distributions\Distribution;
 use App\Models\Distributions\DistributionRecipient;
 use App\Models\Distributions\DistributionRecipientAttachment;
@@ -360,9 +361,69 @@ class DistributionRecipientTable extends DataTableComponent
         $this->dispatch('distribution-view-modal:open');
     }
 
+    public function bulkActions(): array
+    {
+        return [
+            'exportSelectedToPDF' => __('messages.export_pdf'),
+        ];
+    }
+
+    public function exportSelectedToPDF()
+    {
+        if (! auth()->user()?->can('read-mosque-charity-distribution-recipients')) {
+            abort(403);
+        }
+
+        $models = $this->exportQuery()->get();
+
+        if ($models->isEmpty()) {
+            flash()->error(__('messages.data_not_found'));
+            return null;
+        }
+
+        $distribution = Distribution::query()
+            ->with(['organization', 'type', 'neighborhoodAssociation', 'citizensAssociation', 'officers.officer'])
+            ->find($this->distributionId);
+
+        $pdfContent = Pdf::loadView('distributions.recipients.exports.pdf.index', [
+            'models' => $models,
+            'distribution' => $distribution,
+        ])->output();
+
+        $filename = 'Distribution_Recipients_' . now()->format('Ymd_His') . '.pdf';
+
+        return response()->streamDownload(fn () => print($pdfContent), $filename);
+    }
+
     public function customView(): string
     {
         return 'distributions.recipients.modal';
+    }
+
+    protected function exportQuery(): Builder
+    {
+        $query = $this->builder()
+            ->with(['resident', 'officer', 'createdBy', 'distributionClass.source', 'distribution.type', 'distribution.organization', 'distribution.neighborhoodAssociation', 'distribution.citizensAssociation']);
+
+        $recipient = $this->getAppliedFilterWithValue('recipient');
+        if (! empty($recipient)) {
+            $query->where(function (Builder $builder) use ($recipient) {
+                $builder->where('recipient_name', 'like', '%' . $recipient . '%')
+                    ->orWhereHas('resident', fn (Builder $residentQuery) => $residentQuery->where('name', 'like', '%' . $recipient . '%'))
+                    ->orWhereHas('officer', fn (Builder $officerQuery) => $officerQuery->where('name', 'like', '%' . $recipient . '%'));
+            });
+        }
+
+        $status = $this->getAppliedFilterWithValue('status');
+        if (! empty($status)) {
+            $query->where('status', $status);
+        }
+
+        if (! empty($this->getSelected())) {
+            $query->whereIn('distribution_recipients.id', $this->getSelected());
+        }
+
+        return $query->orderBy('distribution_recipients.id');
     }
 
     protected function recipientLabel($row, $value = null): string

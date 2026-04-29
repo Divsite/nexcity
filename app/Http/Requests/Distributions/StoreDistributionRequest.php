@@ -43,7 +43,7 @@ class StoreDistributionRequest extends FormRequest
             $classId = $this->input('distribution_class_id');
             $distributionClass = $classId ? DistributionClass::query()->find($classId) : null;
             $isInternal = (bool) ($distributionClass?->is_internal);
-            $useManual = $this->boolean('use_manual_recipients');
+            $useManual = $isInternal ? true : $this->boolean('use_manual_recipients');
             $recipientIds = $this->input('recipient_ids', []);
             $manualRecipients = $this->input('manual_recipients', []);
             $neighborhood = $this->input('neighborhood_association_id');
@@ -53,15 +53,15 @@ class StoreDistributionRequest extends FormRequest
                 $validator->errors()->add('officer_ids', __('messages.recipients_required'));
             }
 
-            if ($useManual && empty($manualRecipients)) {
+            if (! $isInternal && $useManual && empty($manualRecipients)) {
                 $validator->errors()->add('manual_recipients', __('messages.manual_recipients_required'));
             }
 
-            if (! $useManual && empty($recipientIds)) {
+            if (! $isInternal && ! $useManual && empty($recipientIds)) {
                 $validator->errors()->add('recipient_ids', __('messages.recipients_required'));
             }
 
-            if (! $useManual && empty($neighborhood)) {
+            if (! $isInternal && ! $useManual && empty($neighborhood)) {
                 $validator->errors()->add('neighborhood_association_id', __('messages.neighborhood_required'));
             }
         });

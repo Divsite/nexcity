@@ -79,6 +79,23 @@ class LocationSeeder extends Seeder
             ]
         );
 
+        $rw4 = CitizensAssociation::updateOrCreate(
+            [
+                'village_id' => $jmb->id,
+                'slug' => 'rw004',
+            ],
+            [
+                'code' => sprintf('rw-%s-004', $jmb->code),
+                'number' => '004',
+                'name' => 'RW 004',
+                'slug' => 'rw004',
+                'leader_name' => 'Mulyadi',
+                'leader_phone' => '0897676768',
+                'start_period' => '2025-01-01',
+                'end_period' => '2029-12-31',
+            ]
+        );
+
         $rts = [
             ['code' => '001', 'leader' => 'Suryono'],
             ['code' => '002', 'leader' => 'Arif'],
@@ -101,6 +118,30 @@ class LocationSeeder extends Seeder
                     'slug' => 'rt' . $rt['code'],
                     'leader_name' => $rt['leader'],
                     'leader_phone' => '0897676767',
+                    'start_period' => '2025-01-01',
+                    'end_period' => '2029-12-31',
+                ]
+            );
+        }
+
+        $rw4Rts = [
+            ['code' => '002', 'leader' => 'Hendra Gunawan'],
+            ['code' => '003', 'leader' => 'Fajar Nugroho'],
+        ];
+
+        foreach ($rw4Rts as $rt) {
+            NeighborhoodAssociation::updateOrCreate(
+                [
+                    'citizens_association_id' => $rw4->id,
+                    'slug' => 'rt' . $rt['code'],
+                ],
+                [
+                    'code' => sprintf('rt-%s-%s', $rw4->code, $rt['code']),
+                    'number' => $rt['code'],
+                    'name' => 'RT ' . $rt['code'],
+                    'slug' => 'rt' . $rt['code'],
+                    'leader_name' => $rt['leader'],
+                    'leader_phone' => '0897676768',
                     'start_period' => '2025-01-01',
                     'end_period' => '2029-12-31',
                 ]
