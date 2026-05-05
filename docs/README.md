@@ -14,8 +14,16 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Alur distribution classes, distribusi, recipient status, dan export PDF.
 - `docs/modules/finance-and-reports.md`
   Ringkasan finance tab, summary, expense, dan daily report.
+- `docs/modules/qurban.md`
+  Scope produk qurban, alignment dengan Nexcity, dan pembagian V1/V2/V3.
+- `docs/architecture/qurban-domain-model.md`
+  Desain domain, ERD konseptual, dan relasi antar entitas qurban.
 - `docs/operations/seeders-and-demo-data.md`
   Seeder penting, akun default, dan urutan seed yang benar.
+- `docs/operations/qurban-implementation-roadmap.md`
+  Roadmap implementasi qurban, V1 wajib, dan migration plan.
+- `docs/operations/qurban-v1-migration-sequence.md`
+  Daftar final nama file migration V1 dan urutan dependency-nya.
 - `docs/operations/known-gaps-and-next-steps.md`
   Known issues, keputusan tertunda, dan backlog core.
 

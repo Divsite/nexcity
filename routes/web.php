@@ -39,6 +39,7 @@ use App\Http\Controllers\Pages\PrivacyPolicyController;
 use App\Http\Controllers\Pages\HomeController;
 use App\Http\Controllers\Pages\PrivacyController;
 use App\Http\Controllers\Pages\TermsController;
+use App\Http\Controllers\Qurbans\QurbanDistributionController;
 use App\Http\Middleware\EnsureProfileIsCompleted;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -241,7 +242,21 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
         Route::get('charity-distributions/{distribution}', [\App\Http\Controllers\Charities\CharityDistributionController::class, 'show'])
             ->name('charity-distributions.show');
 
-        Route::get('qurban', ModulePlaceholderController::class)->name('qurban')->defaults('slug', 'mosque-qurban');
+        Route::get('qurban', [QurbanDistributionController::class, 'index'])->name('qurban');
+        Route::post('qurban/distribution-batches', [QurbanDistributionController::class, 'storeBatch'])
+            ->name('qurban.distribution-batches.store');
+        Route::put('qurban/distribution-batches/{batch}', [QurbanDistributionController::class, 'updateBatch'])
+            ->name('qurban.distribution-batches.update');
+        Route::post('qurban/distribution-batches/{batch}/coupons', [QurbanDistributionController::class, 'storeCoupon'])
+            ->name('qurban.coupons.store');
+        Route::post('qurban/distribution-batches/{batch}/coupons/bulk', [QurbanDistributionController::class, 'storeBulkCoupons'])
+            ->name('qurban.coupons.bulk-store');
+        Route::get('qurban/residents', [QurbanDistributionController::class, 'residents'])
+            ->name('qurban.residents');
+        Route::get('qurban/distribution-batches/{batch}/coupons/print', [QurbanDistributionController::class, 'printCoupons'])
+            ->name('qurban.coupons.print');
+        Route::post('qurban/coupons/scan', [QurbanDistributionController::class, 'scanCoupon'])
+            ->name('qurban.coupons.scan');
         Route::get('distributions', ModulePlaceholderController::class)->name('distribution')->defaults('slug', 'mosque-distribution');
         Route::get('scan', ModulePlaceholderController::class)->name('scan')->defaults('slug', 'mosque-scan');
         Route::get('inventory', ModulePlaceholderController::class)->name('inventory')->defaults('slug', 'mosque-inventory');

@@ -12,6 +12,13 @@ use App\Models\Profiles\UserMosqueProfile;
 use App\Models\Profiles\UserResidentProfile;
 use App\Models\Profiles\UserRtProfile;
 use App\Models\Profiles\UserUmkmProfile;
+use App\Models\Qurbans\QurbanAnimal;
+use App\Models\Qurbans\QurbanCouponClaim;
+use App\Models\Qurbans\QurbanDistributionBatch;
+use App\Models\Qurbans\QurbanOrder;
+use App\Models\Qurbans\QurbanOrderPayment;
+use App\Models\Qurbans\QurbanProgram;
+use App\Models\Qurbans\QurbanWorkflowLog;
 use App\Notifications\Users\ResetPassword as ResetPasswordNotification;
 use App\Notifications\Users\VerifyEmail as VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -135,6 +142,51 @@ class User extends Authenticatable implements MustVerifyEmail
     public function organizationMemberships(): HasMany
     {
         return $this->hasMany(OrganizationUser::class);
+    }
+
+    public function qurbanOrders(): HasMany
+    {
+        return $this->hasMany(QurbanOrder::class);
+    }
+
+    public function createdQurbanPrograms(): HasMany
+    {
+        return $this->hasMany(QurbanProgram::class, 'created_by');
+    }
+
+    public function createdQurbanOrders(): HasMany
+    {
+        return $this->hasMany(QurbanOrder::class, 'created_by');
+    }
+
+    public function receivedQurbanOrderPayments(): HasMany
+    {
+        return $this->hasMany(QurbanOrderPayment::class, 'received_by');
+    }
+
+    public function createdQurbanAnimals(): HasMany
+    {
+        return $this->hasMany(QurbanAnimal::class, 'created_by');
+    }
+
+    public function performedQurbanWorkflowLogs(): HasMany
+    {
+        return $this->hasMany(QurbanWorkflowLog::class, 'performed_by');
+    }
+
+    public function createdQurbanDistributionBatches(): HasMany
+    {
+        return $this->hasMany(QurbanDistributionBatch::class, 'created_by');
+    }
+
+    public function claimedQurbanCouponClaims(): HasMany
+    {
+        return $this->hasMany(QurbanCouponClaim::class, 'claimed_by_user_id');
+    }
+
+    public function scannedQurbanCouponClaims(): HasMany
+    {
+        return $this->hasMany(QurbanCouponClaim::class, 'scanner_user_id');
     }
 
     public function hostEvents()

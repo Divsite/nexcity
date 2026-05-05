@@ -10,6 +10,11 @@ use App\Models\Locations\NeighborhoodAssociation;
 use App\Models\Locations\Province;
 use App\Models\Locations\Village;
 use App\Models\Menus\UserMenu;
+use App\Models\Qurbans\QurbanAnimal;
+use App\Models\Qurbans\QurbanBeneficiary;
+use App\Models\Qurbans\QurbanDistributionBatch;
+use App\Models\Qurbans\QurbanOrder;
+use App\Models\Qurbans\QurbanProgram;
 use App\Models\Users\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -143,6 +148,31 @@ class Organization extends Model
     public function whatsappGroups(): HasMany
     {
         return $this->hasMany(OrganizationWhatsappGroup::class);
+    }
+
+    public function qurbanPrograms(): HasMany
+    {
+        return $this->hasMany(QurbanProgram::class);
+    }
+
+    public function qurbanOrders(): HasMany
+    {
+        return $this->hasMany(QurbanOrder::class);
+    }
+
+    public function qurbanAnimals(): HasMany
+    {
+        return $this->hasMany(QurbanAnimal::class);
+    }
+
+    public function qurbanDistributionBatches(): HasMany
+    {
+        return $this->hasMany(QurbanDistributionBatch::class);
+    }
+
+    public function qurbanBeneficiaries(): HasMany
+    {
+        return $this->hasMany(QurbanBeneficiary::class);
     }
 
     public static function typeLabels(): array

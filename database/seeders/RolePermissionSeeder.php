@@ -284,6 +284,14 @@ class RolePermissionSeeder extends Seeder
                 'edit-mosque-charity-distribution-recipients',
                 'add-mosque-charity-distribution-recipients',
                 'delete-mosque-charity-distribution-recipients',
+
+                // qurban
+                'browse-qurban',
+                'read-qurban',
+                'add-qurban',
+                'edit-qurban',
+                'delete-qurban',
+                'scan-qurban-coupon'
             ],
             'resident' => [
                 'my-account',
