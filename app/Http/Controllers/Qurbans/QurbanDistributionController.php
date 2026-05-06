@@ -29,6 +29,7 @@ class QurbanDistributionController extends Controller
     {
         $this->middleware('permission:browse-qurban')->only(['index', 'printCoupons', 'residents']);
         $this->middleware('permission:add-qurban')->only(['storeBatch', 'updateBatch', 'storeCoupon', 'storeBulkCoupons']);
+        $this->middleware('permission:delete-qurban')->only('deleteBatch');
         $this->middleware('permission:scan-qurban-coupon')->only('scanCoupon');
     }
 
@@ -209,6 +210,17 @@ class QurbanDistributionController extends Controller
         flash()->success(__('messages.updated_successfully'));
 
         return redirect()->route('mosque.qurban', ['year' => $data['year'], 'batch_id' => $batch->id]);
+    }
+
+    public function deleteBatch(QurbanDistributionBatch $batch): RedirectResponse
+    {
+        $year = $batch->year ?: now()->year;
+
+        $this->service->deleteBatch($batch);
+
+        flash()->success(__('messages.deleted_successfully'));
+
+        return redirect()->route('mosque.qurban', ['year' => $year]);
     }
 
     public function storeCoupon(Request $request, QurbanDistributionBatch $batch): RedirectResponse

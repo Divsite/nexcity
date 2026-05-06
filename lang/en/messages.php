@@ -489,6 +489,7 @@ return [
     'coupon_color' => 'Coupon Color',
     'coupon_color_hint' => 'Used as the coupon border color to distinguish RT/batch when printed.',
     'qurban_batch_location_year_exists' => 'A qurban coupon batch already exists for this RT and year.',
+    'qurban_delete_batch_confirmation' => 'Delete this qurban distribution batch? This is only allowed when no coupon has been claimed.',
     'claimed_coupon_cannot_be_removed' => 'Claimed coupons cannot be removed from the batch.',
     'scan_coupon_fast_hint' => 'Type the coupon code as the main flow. Camera can be used as a shortcut when supported.',
     'type_coupon_code' => 'Type coupon code',

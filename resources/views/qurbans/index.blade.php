@@ -14,6 +14,7 @@
     $selectedOfficerIds = $isEditingBatch
         ? $selectedBatch->officers->pluck('id')->map(fn ($id) => (string) $id)->all()
         : array_map('strval', old('officer_ids', []));
+    $couponCountValue = $isEditingBatch ? $selectedBatch->coupons->count() : 100;
 @endphp
 
 @section('title', __('messages.qurban_distribution'))
@@ -46,6 +47,56 @@
 
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="qurban-tab-distribution" role="tabpanel">
+                            @if($selectedBatch)
+                                <div class="border rounded p-3 mb-3" id="qurban-scan-card">
+                                    <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-3">
+                                        <div>
+                                            <h6 class="mb-1">{{ __('messages.scan_coupon') }}</h6>
+                                            <div class="text-muted small">{{ __('messages.scan_coupon_fast_hint') }}</div>
+                                        </div>
+                                        <span class="badge bg-info-subtle text-info">{{ __('messages.manual_code_primary') }}</span>
+                                    </div>
+                                    <form method="POST" action="{{ route('mosque.qurban.coupons.scan') }}" id="qurban-scan-form">
+                                        @csrf
+                                        <input type="hidden" name="batch_id" value="{{ $selectedBatch->id }}">
+                                        <div class="row g-2">
+                                            <div class="col-lg-8">
+                                                <label class="form-label">{{ __('messages.coupon_code') }} / QR</label>
+                                                <div class="input-group input-group-lg">
+                                                    <input type="text" name="code" id="qurban-coupon-code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code') }}" autocomplete="off" placeholder="{{ __('messages.type_coupon_code') }}">
+                                                    <button type="button" class="btn btn-outline-primary" id="qurban-start-camera-scan" title="{{ __('messages.scan_coupon') }}">
+                                                        <i class="ri-qr-scan-2-line"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="form-text">{{ __('messages.manual_coupon_code_hint') }}</div>
+                                                @error('code') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-lg-4 d-flex align-items-start pt-lg-4">
+                                                @can('scan-qurban-coupon')
+                                                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                        <i class="ri-check-line align-bottom me-1"></i> {{ __('messages.claim_coupon') }}
+                                                    </button>
+                                                @else
+                                                    <button type="button" class="btn btn-primary btn-lg w-100" disabled>
+                                                        {{ __('messages.claim_coupon') }}
+                                                    </button>
+                                                @endcan
+                                            </div>
+                                        </div>
+                                        <div class="border rounded p-2 mt-3 d-none" id="qurban-camera-panel">
+                                            <video id="qurban-camera-video" class="w-100 rounded bg-dark" playsinline muted style="max-height: 320px;"></video>
+                                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                                <span class="text-muted small" id="qurban-camera-status">{{ __('messages.camera_scanner_ready') }}</span>
+                                                <button type="button" class="btn btn-sm btn-soft-danger" id="qurban-stop-camera-scan">
+                                                    {{ __('messages.stop_scan') }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+
+                            @endif
+
                             <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
                                 <div class="row g-2 flex-grow-1">
                                     <div class="col-md-3">
@@ -223,7 +274,7 @@
 
                                             <div class="mb-3 qurban-create-blank-field d-none">
                                                 <label class="form-label">{{ __('messages.coupon_count') }} <span class="text-danger">*</span></label>
-                                                <input type="number" name="count" min="1" max="1000" class="form-control @error('count') is-invalid @enderror" value="{{ old('count', 100) }}">
+                                                <input type="number" name="count" min="1" max="1000" class="form-control @error('count') is-invalid @enderror" value="{{ old('count', $couponCountValue) }}">
                                                 @error('count') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             </div>
 
@@ -310,25 +361,41 @@
                                         <h6 class="mb-3">{{ __('messages.distribution_batches') }}</h6>
                                         <div class="list-group list-group-flush">
                                             @forelse($batches as $batch)
-                                                <a href="{{ route('mosque.qurban', ['year' => $year, 'batch_id' => $batch->id]) }}"
-                                                   class="list-group-item list-group-item-action px-0 {{ $selectedBatch?->id === $batch->id ? 'active px-2 rounded' : '' }}">
-                                                    <div class="d-flex justify-content-between gap-2">
-                                                        <div class="fw-semibold">{{ $batch->title }}</div>
-                                                        <span class="badge {{ $selectedBatch?->id === $batch->id ? 'bg-light text-dark' : 'bg-soft-primary text-primary' }}">
-                                                            {{ $batch->coupons_count }}
-                                                        </span>
+                                                @php
+                                                    $isActiveBatch = $selectedBatch?->id === $batch->id;
+                                                @endphp
+                                                <div class="list-group-item px-0 {{ $isActiveBatch ? 'active px-2 rounded' : '' }}">
+                                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                                        <a href="{{ route('mosque.qurban', ['year' => $year, 'batch_id' => $batch->id]) }}"
+                                                           class="flex-grow-1 text-decoration-none {{ $isActiveBatch ? 'text-white' : 'text-body' }}">
+                                                            <div class="d-flex justify-content-between gap-2">
+                                                                <div class="fw-semibold">{{ $batch->title }}</div>
+                                                                <span class="badge {{ $isActiveBatch ? 'bg-light text-dark' : 'bg-soft-primary text-primary' }}">
+                                                                    {{ $batch->coupons_count }}
+                                                                </span>
+                                                            </div>
+                                                            <div class="{{ $isActiveBatch ? 'text-white-50' : 'text-muted' }} small">
+                                                                {{ $batch->distribution_date?->format('d/m/Y') ?? '-' }}
+                                                                @if($batch->neighborhoodAssociation || $batch->citizensAssociation)
+                                                                    · {{ $batch->neighborhoodAssociation?->name ?? '-' }} / {{ $batch->citizensAssociation?->name ?? '-' }}
+                                                                @endif
+                                                                · {{ __('messages.claimed') }} {{ $batch->claimed_coupons_count }}/{{ $batch->coupons_count }}
+                                                                @if($batch->officers->isNotEmpty())
+                                                                    · {{ $batch->officers->pluck('name')->join(', ') }}
+                                                                @endif
+                                                            </div>
+                                                        </a>
+                                                        @can('delete-qurban')
+                                                            <form method="POST" action="{{ route('mosque.qurban.distribution-batches.destroy', $batch) }}" class="qurban-delete-batch-form">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm {{ $isActiveBatch ? 'btn-light text-danger' : 'btn-soft-danger' }}" title="{{ __('messages.delete') }}">
+                                                                    <i class="ri-delete-bin-line"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endcan
                                                     </div>
-                                                    <div class="{{ $selectedBatch?->id === $batch->id ? 'text-white-50' : 'text-muted' }} small">
-                                                        {{ $batch->distribution_date?->format('d/m/Y') ?? '-' }}
-                                                        @if($batch->neighborhoodAssociation || $batch->citizensAssociation)
-                                                            · {{ $batch->neighborhoodAssociation?->name ?? '-' }} / {{ $batch->citizensAssociation?->name ?? '-' }}
-                                                        @endif
-                                                        · {{ __('messages.claimed') }} {{ $batch->claimed_coupons_count }}/{{ $batch->coupons_count }}
-                                                        @if($batch->officers->isNotEmpty())
-                                                            · {{ $batch->officers->pluck('name')->join(', ') }}
-                                                        @endif
-                                                    </div>
-                                                </a>
+                                                </div>
                                             @empty
                                                 <div class="text-muted">{{ __('messages.no_data_available') }}</div>
                                             @endforelse
@@ -428,52 +495,6 @@
                                             </table>
                                         </div>
 
-                                        <div class="border rounded p-3 mt-3">
-                                            <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-3">
-                                                <div>
-                                                    <h6 class="mb-1">{{ __('messages.scan_coupon') }}</h6>
-                                                    <div class="text-muted small">{{ __('messages.scan_coupon_fast_hint') }}</div>
-                                                </div>
-                                                <span class="badge bg-info-subtle text-info">{{ __('messages.manual_code_primary') }}</span>
-                                            </div>
-                                            <form method="POST" action="{{ route('mosque.qurban.coupons.scan') }}" id="qurban-scan-form">
-                                                @csrf
-                                                <input type="hidden" name="batch_id" value="{{ $selectedBatch->id }}">
-                                                <div class="row g-2">
-                                                    <div class="col-lg-8">
-                                                        <label class="form-label">{{ __('messages.coupon_code') }} / QR</label>
-                                                        <div class="input-group input-group-lg">
-                                                            <input type="text" name="code" id="qurban-coupon-code" class="form-control @error('code') is-invalid @enderror" value="{{ old('code') }}" autocomplete="off" placeholder="{{ __('messages.type_coupon_code') }}">
-                                                            <button type="button" class="btn btn-outline-primary" id="qurban-start-camera-scan" title="{{ __('messages.scan_coupon') }}">
-                                                                <i class="ri-qr-scan-2-line"></i>
-                                                            </button>
-                                                        </div>
-                                                        <div class="form-text">{{ __('messages.manual_coupon_code_hint') }}</div>
-                                                        @error('code') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                                                    </div>
-                                                    <div class="col-lg-4 d-flex align-items-start pt-lg-4">
-                                                        @can('scan-qurban-coupon')
-                                                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                                <i class="ri-check-line align-bottom me-1"></i> {{ __('messages.claim_coupon') }}
-                                                            </button>
-                                                        @else
-                                                            <button type="button" class="btn btn-primary btn-lg w-100" disabled>
-                                                                {{ __('messages.claim_coupon') }}
-                                                            </button>
-                                                        @endcan
-                                                    </div>
-                                                </div>
-                                                <div class="border rounded p-2 mt-3 d-none" id="qurban-camera-panel">
-                                                    <video id="qurban-camera-video" class="w-100 rounded bg-dark" playsinline muted style="max-height: 320px;"></video>
-                                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                                        <span class="text-muted small" id="qurban-camera-status">{{ __('messages.camera_scanner_ready') }}</span>
-                                                        <button type="button" class="btn btn-sm btn-soft-danger" id="qurban-stop-camera-scan">
-                                                            {{ __('messages.stop_scan') }}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
                                     @else
                                         <div class="alert alert-info mb-0">
                                             {{ __('messages.create_distribution_batch_first') }}
@@ -1002,6 +1023,36 @@
                     showCameraPanel(@json(__('messages.camera_scan_failed')));
                 }
             }
+
+            document.querySelectorAll('.qurban-delete-batch-form').forEach((form) => {
+                form.addEventListener('submit', async function (event) {
+                    event.preventDefault();
+
+                    if (!window.Swal) {
+                        form.submit();
+                        return;
+                    }
+
+                    const result = await window.Swal.fire({
+                        title: window.messages?.are_you_sure || @json(__('messages.are_you_sure')),
+                        text: @json(__('messages.qurban_delete_batch_confirmation')),
+                        icon: 'warning',
+                        showCancelButton: true,
+                        customClass: {
+                            confirmButton: 'btn btn-primary w-xs me-2 mt-2',
+                            cancelButton: 'btn btn-danger w-xs mt-2',
+                        },
+                        confirmButtonText: window.messages?.yes_delete_it || @json(__('messages.yes_delete_it')),
+                        cancelButtonText: window.messages?.cancel || @json(__('messages.cancel')),
+                        buttonsStyling: false,
+                        showCloseButton: true,
+                    });
+
+                    if (result.value || result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
 
             startCamera?.addEventListener('click', startCameraScan);
             stopCamera?.addEventListener('click', stopCameraScan);

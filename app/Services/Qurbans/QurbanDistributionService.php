@@ -103,14 +103,42 @@ class QurbanDistributionService
 
             $this->syncOfficers($batch, $data['officer_ids'] ?? []);
 
+            $sharedPayload = [
+                'package_label' => $data['package_label'] ?? null,
+                'meat_weight' => $data['meat_weight'] ?? null,
+            ];
+
             if (($data['mode'] ?? 'residents') === 'residents') {
-                $this->syncResidentCoupons($batch, $data['resident_ids'] ?? [], [
-                    'package_label' => $data['package_label'] ?? null,
-                    'meat_weight' => $data['meat_weight'] ?? null,
-                ]);
+                $this->syncResidentCoupons($batch, $data['resident_ids'] ?? [], $sharedPayload);
+            } else {
+                $this->syncBlankCoupons($batch, (int) ($data['count'] ?? 0), $sharedPayload);
             }
 
             return $batch->refresh();
+        });
+    }
+
+    public function deleteBatch(QurbanDistributionBatch $batch): void
+    {
+        $this->authorizeBatch($batch);
+
+        DB::transaction(function () use ($batch) {
+            $batch->load(['coupons.beneficiary']);
+
+            if ($batch->coupons->contains(fn (QurbanCoupon $coupon) => $coupon->status === QurbanCoupon::STATUS_CLAIMED)) {
+                throw ValidationException::withMessages([
+                    'batch' => __('messages.claimed_coupon_cannot_be_removed'),
+                ]);
+            }
+
+            $batch->officers()->detach();
+
+            foreach ($batch->coupons as $coupon) {
+                optional($coupon->beneficiary)->delete();
+                $coupon->delete();
+            }
+
+            $batch->delete();
         });
     }
 
@@ -128,6 +156,21 @@ class QurbanDistributionService
             throw ValidationException::withMessages([
                 'resident_ids' => __('messages.recipients_required'),
             ]);
+        }
+
+        $blankCoupons = QurbanCoupon::query()
+            ->where('qurban_distribution_batch_id', $batch->id)
+            ->whereNull('qurban_beneficiary_id')
+            ->get();
+
+        if ($blankCoupons->contains(fn (QurbanCoupon $coupon) => $coupon->status === QurbanCoupon::STATUS_CLAIMED)) {
+            throw ValidationException::withMessages([
+                'resident_ids' => __('messages.claimed_coupon_cannot_be_removed'),
+            ]);
+        }
+
+        foreach ($blankCoupons as $coupon) {
+            $coupon->delete();
         }
 
         $existingCoupons = QurbanCoupon::query()
@@ -204,6 +247,80 @@ class QurbanDistributionService
             $payload["resident_id"] = $residentId;
 
             $this->issueCoupon($batch, $payload);
+        }
+    }
+
+
+    public function syncBlankCoupons(QurbanDistributionBatch $batch, int $count, array $data = []): void
+    {
+        $this->authorizeBatch($batch);
+
+        if ($count < 1 || $count > 1000) {
+            throw ValidationException::withMessages([
+                'count' => __('messages.coupon_count_invalid'),
+            ]);
+        }
+
+        $coupons = QurbanCoupon::query()
+            ->with('beneficiary')
+            ->where('qurban_distribution_batch_id', $batch->id)
+            ->orderBy('id')
+            ->get();
+
+        $hasTargetedCoupons = $coupons->contains(fn (QurbanCoupon $coupon) => (bool) $coupon->qurban_beneficiary_id);
+        if ($hasTargetedCoupons) {
+            if ($coupons->contains(fn (QurbanCoupon $coupon) => $coupon->status === QurbanCoupon::STATUS_CLAIMED)) {
+                throw ValidationException::withMessages([
+                    'mode' => __('messages.claimed_coupon_cannot_be_removed'),
+                ]);
+            }
+
+            foreach ($coupons as $coupon) {
+                optional($coupon->beneficiary)->delete();
+                $coupon->delete();
+            }
+
+            $coupons = collect();
+        }
+
+        $currentCount = $coupons->count();
+
+        $updates = [];
+        if (array_key_exists('package_label', $data)) {
+            $updates['package_label'] = $data['package_label'];
+        }
+        if (array_key_exists('meat_weight', $data)) {
+            $updates['meat_weight'] = $data['meat_weight'];
+        }
+        if ($updates) {
+            QurbanCoupon::query()
+                ->where('qurban_distribution_batch_id', $batch->id)
+                ->update($updates);
+        }
+
+        if ($count > $currentCount) {
+            $this->bulkIssueBlankCoupons($batch, $count - $currentCount, $data);
+            return;
+        }
+
+        if ($count === $currentCount) {
+            return;
+        }
+
+        $removeCount = $currentCount - $count;
+        $removableCoupons = $coupons
+            ->where('status', QurbanCoupon::STATUS_ISSUED)
+            ->sortByDesc('id')
+            ->take($removeCount);
+
+        if ($removableCoupons->count() < $removeCount) {
+            throw ValidationException::withMessages([
+                'count' => __('messages.claimed_coupon_cannot_be_removed'),
+            ]);
+        }
+
+        foreach ($removableCoupons as $coupon) {
+            $coupon->delete();
         }
     }
 
@@ -337,7 +454,17 @@ class QurbanDistributionService
                 ];
             }
 
-            $this->authorizeBatch($coupon->batch);
+            $context = $this->partnerContext();
+            if (! $context || (int) $coupon->batch->organization_id !== (int) ($context['organization_id'] ?? 0)) {
+                $claim = $this->createClaim(null, QurbanCouponClaim::RESULT_INVALID, $scannerUserId, $notes, $code, $scanContext);
+
+                return [
+                    'success' => false,
+                    'result' => QurbanCouponClaim::RESULT_INVALID,
+                    'message' => __('messages.invalid_coupon'),
+                    'claim' => $claim,
+                ];
+            }
 
             if ($coupon->status !== QurbanCoupon::STATUS_ISSUED) {
                 $result = match ($coupon->status) {

@@ -494,6 +494,7 @@ return [
     'coupon_color' => 'Warna Kupon',
     'coupon_color_hint' => 'Dipakai sebagai warna garis kupon untuk membedakan RT/batch saat dicetak.',
     'qurban_batch_location_year_exists' => 'Batch kupon qurban untuk RT dan tahun ini sudah ada.',
+    'qurban_delete_batch_confirmation' => 'Hapus batch distribusi qurban ini? Ini hanya bisa dilakukan jika belum ada kupon yang diklaim.',
     'claimed_coupon_cannot_be_removed' => 'Kupon yang sudah diklaim tidak bisa dihapus dari batch.',
     'scan_coupon_fast_hint' => 'Ketik kode kupon sebagai cara utama. Kamera bisa dipakai sebagai shortcut jika perangkat mendukung.',
     'type_coupon_code' => 'Ketik kode kupon',

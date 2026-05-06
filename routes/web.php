@@ -247,6 +247,8 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
             ->name('qurban.distribution-batches.store');
         Route::put('qurban/distribution-batches/{batch}', [QurbanDistributionController::class, 'updateBatch'])
             ->name('qurban.distribution-batches.update');
+        Route::delete('qurban/distribution-batches/{batch}', [QurbanDistributionController::class, 'deleteBatch'])
+            ->name('qurban.distribution-batches.destroy');
         Route::post('qurban/distribution-batches/{batch}/coupons', [QurbanDistributionController::class, 'storeCoupon'])
             ->name('qurban.coupons.store');
         Route::post('qurban/distribution-batches/{batch}/coupons/bulk', [QurbanDistributionController::class, 'storeBulkCoupons'])
