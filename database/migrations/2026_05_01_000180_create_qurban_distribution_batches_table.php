@@ -13,6 +13,10 @@ return new class extends Migration
             $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->foreignId('qurban_program_id')->nullable()->constrained('qurban_programs')->nullOnDelete();
             $table->string('title');
+            $table->string('coupon_color', 20)->nullable();
+            $table->unsignedSmallInteger('year')->nullable()->index();
+            $table->dateTime('claim_starts_at')->nullable();
+            $table->text('notes')->nullable();
             $table->date('distribution_date')->nullable();
             $table->string('location_label')->nullable();
             $table->foreignId('country_id')->nullable()->constrained('loc_countries')->nullOnDelete();
