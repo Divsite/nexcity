@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'profile_completed' => \App\Http\Middleware\EnsureProfileIsCompleted::class,
         'openclaw.key' => \App\Http\Middleware\OpenclawApiKey::class,
+        'page_builder_enabled' => \Modules\PageBuilder\Http\Middleware\EnsurePageBuilderEnabled::class,
     ];
 }

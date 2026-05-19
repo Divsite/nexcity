@@ -1,0 +1,3 @@
+[submodule "Modules/PageBuilder"]
+	path = Modules/PageBuilder
+	url = https://github.com/samsul97/page-builder-custom.git
