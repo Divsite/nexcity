@@ -2445,3 +2445,31 @@ if ( ! function_exists('set_env'))
         }
     }
 }
+
+// Compatibility shims for PageBuilder module (mirrors rawdee-glampings helpers)
+
+if (! function_exists('site_setting')) {
+    function site_setting(string $key, $default = null): mixed
+    {
+        try {
+            $row = \App\Models\SiteSetting::where('key', $key)->first();
+            return $row ? $row->value : $default;
+        } catch (\Exception $e) {
+            return $default;
+        }
+    }
+}
+
+if (! function_exists('site_setting_forget_cache')) {
+    function site_setting_forget_cache(): void
+    {
+        // no-op: nexcity does not cache site_setting reads
+    }
+}
+
+if (! function_exists('uploads_url')) {
+    function uploads_url(string $path): string
+    {
+        return \Illuminate\Support\Facades\Storage::url($path);
+    }
+}
