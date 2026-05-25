@@ -382,6 +382,7 @@ return [
     'organization_profile' => 'Organization Profile',
     'resident' => 'Resident',
     'residents' => 'Residents',
+    'inhabitant' => 'Inhabitant',
     'resident_list' => 'Resident List',
     'country' => 'Country',
     'province' => 'Province',
