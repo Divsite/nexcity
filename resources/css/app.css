@@ -116,3 +116,17 @@
 .filepond--item-panel {
     background-color: #405189 !important;
 }
+
+/* Ensure footer always stays at the bottom of the viewport on short pages (Velzon layout) */
+#layout-wrapper {
+    min-height: 100vh;
+}
+
+/* Fix: Velzon choices.js hidden dropdown adds invisible height, causing footer float */
+.choices__list--dropdown {
+    display: none;
+}
+
+.choices__list--dropdown.is-active {
+    display: block;
+}
