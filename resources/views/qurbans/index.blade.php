@@ -422,9 +422,20 @@
                                                     · {{ __('messages.created_by') }}: {{ $selectedBatch->createdBy?->name ?? '-' }}
                                                 </div>
                                             </div>
-                                            <a href="{{ route('mosque.qurban.coupons.print', $selectedBatch) }}" target="_blank" class="btn btn-soft-primary">
-                                                <i class="ri-printer-line align-bottom me-1"></i> {{ __('messages.print_coupons') }}
-                                            </a>
+                                            <div class="d-flex gap-2">
+                                                <form method="POST" action="{{ route('mosque.qurban.coupon-exports.dispatch-batch', $selectedBatch) }}">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-soft-primary">
+                                                        <i class="ri-file-pdf-line align-bottom me-1"></i> {{ __('messages.print_coupons') }}
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ route('mosque.qurban.coupon-exports.dispatch-all') }}">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-soft-secondary">
+                                                        <i class="ri-file-pdf-line align-bottom me-1"></i> Print Semua Kupon
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
 
                                         <div class="table-responsive">

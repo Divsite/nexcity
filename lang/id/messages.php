@@ -382,6 +382,7 @@ return [
     'organization_profile' => 'Profil Organisasi',
     'resident' => 'Penduduk',
     'residents' => 'Penduduk',
+    'inhabitant' => 'Warga',
     'resident_list' => 'Daftar Penduduk',
     'country' => 'Negara',
     'province' => 'Provinsi / Wilayah',

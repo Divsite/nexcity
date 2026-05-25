@@ -39,6 +39,7 @@ use App\Http\Controllers\Pages\PrivacyPolicyController;
 use App\Http\Controllers\Pages\HomeController;
 use App\Http\Controllers\Pages\PrivacyController;
 use App\Http\Controllers\Pages\TermsController;
+use App\Http\Controllers\Qurbans\QurbanCouponExportController;
 use App\Http\Controllers\Qurbans\QurbanDistributionController;
 use App\Http\Middleware\EnsureProfileIsCompleted;
 use Illuminate\Support\Facades\Auth;
@@ -255,8 +256,14 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
             ->name('qurban.coupons.bulk-store');
         Route::get('qurban/residents', [QurbanDistributionController::class, 'residents'])
             ->name('qurban.residents');
-        Route::get('qurban/distribution-batches/{batch}/coupons/print', [QurbanDistributionController::class, 'printCoupons'])
-            ->name('qurban.coupons.print');
+        Route::post('qurban/distribution-batches/{batch}/coupon-exports', [QurbanCouponExportController::class, 'dispatchBatch'])
+            ->name('qurban.coupon-exports.dispatch-batch');
+        Route::post('qurban/coupon-exports/all', [QurbanCouponExportController::class, 'dispatchAll'])
+            ->name('qurban.coupon-exports.dispatch-all');
+        Route::get('qurban/coupon-exports/{export}/status', [QurbanCouponExportController::class, 'status'])
+            ->name('qurban.coupon-exports.status');
+        Route::get('qurban/coupon-exports/{export}/download', [QurbanCouponExportController::class, 'download'])
+            ->name('qurban.coupon-exports.download');
         Route::post('qurban/coupons/scan', [QurbanDistributionController::class, 'scanCoupon'])
             ->name('qurban.coupons.scan');
         Route::get('distributions', ModulePlaceholderController::class)->name('distribution')->defaults('slug', 'mosque-distribution');

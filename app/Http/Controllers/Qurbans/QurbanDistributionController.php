@@ -12,7 +12,6 @@ use App\Models\Qurbans\QurbanCoupon;
 use App\Models\Qurbans\QurbanDistributionBatch;
 use App\Models\Users\User;
 use App\Services\Qurbans\QurbanDistributionService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -20,14 +19,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
 class QurbanDistributionController extends Controller
 {
     public function __construct(protected QurbanDistributionService $service)
     {
-        $this->middleware('permission:browse-qurban')->only(['index', 'printCoupons', 'residents']);
+        $this->middleware('permission:browse-qurban')->only(['index', 'residents']);
         $this->middleware('permission:add-qurban')->only(['storeBatch', 'updateBatch', 'storeCoupon', 'storeBulkCoupons']);
         $this->middleware('permission:delete-qurban')->only('deleteBatch');
         $this->middleware('permission:scan-qurban-coupon')->only('scanCoupon');
@@ -266,27 +264,6 @@ class QurbanDistributionController extends Controller
         flash()->success(__('messages.coupons_generated_successfully', ['count' => $created->count()]));
 
         return redirect()->route('mosque.qurban', ['batch_id' => $batch->id]);
-    }
-
-    public function printCoupons(QurbanDistributionBatch $batch): StreamedResponse
-    {
-        $this->service->authorizeBatch($batch);
-
-        $batch->load([
-            'organization.profile',
-            'citizensAssociation',
-            'neighborhoodAssociation',
-            'coupons.beneficiary',
-        ]);
-
-        $pdfContent = Pdf::loadView('qurbans.exports.coupons', [
-            'batch' => $batch,
-            'coupons' => $batch->coupons,
-        ])->setPaper('a4')->output();
-
-        $filename = 'Qurban_Coupons_' . $batch->id . '_' . now()->format('Ymd_His') . '.pdf';
-
-        return response()->streamDownload(fn () => print($pdfContent), $filename);
     }
 
     public function scanCoupon(Request $request): RedirectResponse
