@@ -145,10 +145,10 @@
                                 <div class="title">{{ __('messages.qurban_meat_coupon') }}</div>
                                 <div class="code">{{ $coupon->coupon_code }}</div>
                                 <div class="meta">
-                                    {{ __('messages.location') }}: {{ $location ?: '-' }}<br>
-                                    {{ __('messages.claim_date') }}: {{ $claimDate ?: '-' }} - {{ $claimTime ?: '-' }}<br>
-                                    {{ __('messages.beneficiary') }}: {{ $coupon->beneficiary?->name_snapshot ?: '-' }}<br>
-                                    {{ __('messages.package_label') }}: {{ $coupon->package_label ?: '-' }}
+                                    @if($location){{ __('messages.location') }}: {{ $location }}<br>@endif
+                                    @if($claimDate || $claimTime){{ __('messages.claim_date') }}: {{ $claimDate ?: '-' }} - {{ $claimTime ?: '-' }}<br>@endif
+                                    @if($coupon->beneficiary?->name_snapshot){{ __('messages.beneficiary') }}: {{ $coupon->beneficiary->name_snapshot }}<br>@endif
+                                    @if($coupon->package_label){{ __('messages.package_label') }}: {{ $coupon->package_label }}@endif
                                     @if($batch->notes)
                                         <span class="notes">{{ $batch->notes }}</span>
                                     @endif
