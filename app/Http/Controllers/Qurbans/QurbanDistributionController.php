@@ -266,6 +266,33 @@ class QurbanDistributionController extends Controller
         return redirect()->route('mosque.qurban', ['batch_id' => $batch->id]);
     }
 
+    public function stats(Request $request): JsonResponse
+    {
+        $context = $this->service->partnerContext();
+        if (! $context) {
+            abort(403);
+        }
+
+        $year = $request->integer('year') ?: now()->year;
+
+        $batches = QurbanDistributionBatch::query()
+            ->withCount([
+                'coupons',
+                'coupons as claimed_coupons_count' => fn (Builder $query) => $query->where('status', QurbanCoupon::STATUS_CLAIMED),
+            ])
+            ->where('organization_id', $context['organization_id'])
+            ->where(function (Builder $query) use ($year) {
+                $query->where('year', $year)
+                    ->orWhere(function (Builder $legacyQuery) use ($year) {
+                        $legacyQuery->whereNull('year')
+                            ->whereYear('distribution_date', $year);
+                    });
+            })
+            ->get();
+
+        return response()->json($this->summaryForBatches($batches));
+    }
+
     public function scanCoupon(Request $request): RedirectResponse
     {
         $data = $request->validate([

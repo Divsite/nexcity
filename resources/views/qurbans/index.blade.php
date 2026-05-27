@@ -102,25 +102,25 @@
                                     <div class="col-md-3">
                                         <div class="border rounded p-3 h-100">
                                             <div class="text-muted text-uppercase fs-12 mb-1">{{ __('messages.total_coupons') }}</div>
-                                            <div class="fs-5 fw-semibold">{{ $summary['total'] ?? 0 }}</div>
+                                            <div class="fs-5 fw-semibold" id="stat-total">{{ $summary['total'] ?? 0 }}</div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="border rounded p-3 h-100">
                                             <div class="text-muted text-uppercase fs-12 mb-1">{{ __('messages.claimed') }}</div>
-                                            <div class="fs-5 fw-semibold text-success">{{ $summary['claimed'] ?? 0 }}</div>
+                                            <div class="fs-5 fw-semibold text-success" id="stat-claimed">{{ $summary['claimed'] ?? 0 }}</div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="border rounded p-3 h-100">
                                             <div class="text-muted text-uppercase fs-12 mb-1">{{ __('messages.not_claimed') }}</div>
-                                            <div class="fs-5 fw-semibold text-warning">{{ $summary['remaining'] ?? 0 }}</div>
+                                            <div class="fs-5 fw-semibold text-warning" id="stat-remaining">{{ $summary['remaining'] ?? 0 }}</div>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
                                         <div class="border rounded p-3 h-100">
                                             <div class="text-muted text-uppercase fs-12 mb-1">{{ __('messages.progress') }}</div>
-                                            <div class="fs-5 fw-semibold">{{ \Illuminate\Support\Number::format($summary['progress'] ?? 0, 0, 2, app()->getLocale()) }}%</div>
+                                            <div class="fs-5 fw-semibold" id="stat-progress">{{ \Illuminate\Support\Number::format($summary['progress'] ?? 0, 0, 2, app()->getLocale()) }}%</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1069,5 +1069,39 @@
             stopCamera?.addEventListener('click', stopCameraScan);
 
         });
+    </script>
+
+    <script>
+    (function () {
+        const statsUrl = '{{ route('mosque.qurban.stats') }}';
+        const year     = {{ (int) $year }};
+
+        function updateStats() {
+            fetch(statsUrl + '?year=' + year, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var el;
+                el = document.getElementById('stat-total');
+                if (el) el.textContent = data.total;
+
+                el = document.getElementById('stat-claimed');
+                if (el) el.textContent = data.claimed;
+
+                el = document.getElementById('stat-remaining');
+                if (el) el.textContent = data.remaining;
+
+                el = document.getElementById('stat-progress');
+                if (el) {
+                    var pct = parseFloat(data.progress) || 0;
+                    el.textContent = (Number.isInteger(pct) ? pct : pct.toFixed(2).replace(/\.?0+$/, '')) + '%';
+                }
+            })
+            .catch(function () { /* silent — network hiccup, retry next tick */ });
+        }
+
+        setInterval(updateStats, 5000);
+    })();
     </script>
 @endpush
