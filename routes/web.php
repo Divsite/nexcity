@@ -244,6 +244,7 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
             ->name('charity-distributions.show');
 
         Route::get('qurban', [QurbanDistributionController::class, 'index'])->name('qurban');
+        Route::get('qurban/stats', [QurbanDistributionController::class, 'stats'])->name('qurban.stats');
         Route::post('qurban/distribution-batches', [QurbanDistributionController::class, 'storeBatch'])
             ->name('qurban.distribution-batches.store');
         Route::put('qurban/distribution-batches/{batch}', [QurbanDistributionController::class, 'updateBatch'])
