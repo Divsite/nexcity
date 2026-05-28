@@ -479,7 +479,12 @@ class QurbanDistributionService
                 return [
                     'success' => false,
                     'result' => $result,
-                    'message' => __('messages.coupon_not_claimable'),
+                    'message' => match ($result) {
+                        QurbanCouponClaim::RESULT_ALREADY_CLAIMED => __('messages.coupon_already_claimed'),
+                        QurbanCouponClaim::RESULT_CANCELLED       => __('messages.coupon_cancelled'),
+                        QurbanCouponClaim::RESULT_EXPIRED         => __('messages.coupon_expired'),
+                        default                                   => __('messages.coupon_not_claimable'),
+                    },
                     'coupon' => $coupon,
                     'claim' => $claim,
                 ];

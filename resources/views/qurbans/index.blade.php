@@ -506,6 +506,33 @@
                                             </table>
                                         </div>
 
+                                        {{-- Kupon Panitia / Relawan --}}
+                                        <div class="border rounded p-3 mt-3">
+                                            <h6 class="mb-3 text-muted text-uppercase fs-11 fw-semibold">
+                                                <i class="ri-team-line align-bottom me-1"></i> Kupon Panitia / Relawan
+                                            </h6>
+                                            <form method="POST" action="{{ route('mosque.qurban.coupons.bulk-store', $selectedBatch) }}" class="row g-2 align-items-end">
+                                                @csrf
+                                                <input type="hidden" name="mode" value="blank">
+                                                <div class="col-auto">
+                                                    <label class="form-label mb-1 small">Label</label>
+                                                    <select name="package_label" class="form-select form-select-sm" style="width: 140px;">
+                                                        <option value="Panitia">Panitia</option>
+                                                        <option value="Relawan">Relawan</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <label class="form-label mb-1 small">Jumlah</label>
+                                                    <input type="number" name="count" value="1" min="1" max="200" class="form-control form-control-sm" style="width: 90px;">
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button type="submit" class="btn btn-sm btn-soft-secondary">
+                                                        <i class="ri-add-line align-bottom me-1"></i> Generate
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+
                                     @else
                                         <div class="alert alert-info mb-0">
                                             {{ __('messages.create_distribution_batch_first') }}

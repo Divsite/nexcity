@@ -27,7 +27,11 @@
 @push('scripts')
     <script>
         @if(flash()->message)
-            const flashToast = new bootstrap.Toast(document.getElementById('flash-toast')).show();
+        (function () {
+            var el = document.getElementById('flash-toast');
+            if (!el) return;
+            new bootstrap.Toast(el, { delay: 8000 }).show();
+        })();
         @endif
     </script>
 @endpush
