@@ -28,11 +28,19 @@ class ResidentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:browse-rt-residents')->only('index');
-        $this->middleware('permission:add-residents|add-rt-residents')->only(['create', 'store']);
-        $this->middleware('permission:edit-residents|edit-rt-residents')->only(['edit', 'update']);
-        $this->middleware('permission:delete-residents|delete-rt-residents')->only('destroy');
-        $this->middleware('permission:browse-rt-residents')->only(['qrCard', 'qrCards']);
+        // `capability:` reads the caller's level, not their Spatie role. A role
+        // check cannot separate a bendahara from a field officer, because every
+        // RT officer carries the same rt_admin role.
+        // See docs/operations/authorization-audit.md.
+        //
+        // The `add-residents` / `edit-residents` / `delete-residents`
+        // alternatives that used to sit here were never defined as permissions,
+        // so they could only ever have matched nothing.
+        $this->middleware('capability:browse-rt-residents')->only('index');
+        $this->middleware('capability:add-rt-residents')->only(['create', 'store']);
+        $this->middleware('capability:edit-rt-residents')->only(['edit', 'update']);
+        $this->middleware('capability:delete-rt-residents')->only('destroy');
+        $this->middleware('capability:browse-rt-residents')->only(['qrCard', 'qrCards']);
     }
 
     public function index(): View

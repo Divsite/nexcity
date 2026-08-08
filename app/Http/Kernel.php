@@ -70,6 +70,7 @@ class Kernel extends HttpKernel
         'profile_completed' => \App\Http\Middleware\EnsureProfileIsCompleted::class,
         'openclaw.key' => \App\Http\Middleware\OpenclawApiKey::class,
         'organization.context' => \App\Http\Middleware\ResolveActiveOrganization::class,
+        'capability' => \App\Http\Middleware\RequireCapability::class,
         'page_builder_enabled' => \Modules\PageBuilder\Http\Middleware\EnsurePageBuilderEnabled::class,
     ];
 }

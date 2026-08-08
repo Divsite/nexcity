@@ -4,6 +4,8 @@ namespace Tests\Feature\Residents;
 
 use App\Models\Organizations\Organization;
 use App\Models\Organizations\OrganizationUser;
+use App\Models\Organizations\UserLevel;
+use App\Models\Organizations\UserLevelPermission;
 use App\Models\Users\User;
 use App\Models\Profiles\UserResidentProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,6 +138,18 @@ class QrCardAccessTest extends TestCase
             ['display_name' => 'browse-rt-residents'],
         ));
         $user->assignRole($role);
+
+        // The route is guarded by `capability:`, so the grant has to come from
+        // the level. The role alone is deliberately no longer enough.
+        $level = UserLevel::forceCreate([
+            'organization_id' => $organization->id,
+            'name' => 'RT Superadmin',
+            'slug' => 'rt-superadmin',
+        ]);
+        UserLevelPermission::forceCreate([
+            'user_level_id' => $level->id,
+            'permission_name' => 'browse-rt-residents',
+        ]);
 
         OrganizationUser::forceCreate([
             'organization_id' => $organization->id,

@@ -140,18 +140,72 @@ Urutannya penting; membalik nomor 2 dan 1 akan mengunci orang yang berhak.
    Perintah ini **hanya menambah**, tidak pernah mencabut — jadi tidak bisa mengunci siapa pun.
    Exit code-nya bukan nol saat ada selisih, supaya bisa dipasang di CI atau pemeriksaan deploy.
 
-2. **Ubah pemeriksaan jadi level-authoritative.** ← berikutnya, dan sekarang sudah aman dikerjakan.
+2. ✅ **Ubah pemeriksaan jadi level-authoritative — selesai 8 Agustus 2026.**
 
-   Ganti `permission:` pada route yang di-scope organisasi dengan pemeriksaan yang membaca level.
-   `CapabilityResolver` sudah melakukannya untuk API dan bisa dipakai ulang lewat sebuah Gate atau
-   middleware `capability:`.
+   Middleware `capability:` (`app/Http/Middleware/RequireCapability.php`) memakai ulang
+   `CapabilityResolver`. Bentuk pemakaiannya sama dengan Spatie, termasuk bentuk ATAU:
 
-   Setelah langkah ini, **uji ulang tiap level** — inilah langkah yang bisa mencabut akses.
+   ```php
+   $this->middleware('capability:browse-qurban');
+   $this->middleware('capability:add-rt-residents|edit-rt-residents');
+   ```
+
+   Diterapkan pada 18 guard di 5 controller yang di-scope organisasi: CharityTransaction,
+   CharityDistribution, Resident, Membership, QurbanDistribution. Guard yang bukan ber-scope
+   organisasi (`browse-users`, `my-account`, dll) **tetap** memakai `permission:` — itu memang
+   wewenang role.
+
+   Superadmin tidak pernah di-scope level.
+
+   Hasil terhadap data nyata:
+
+   | Level | scan-qurban | delete-qurban | browse-amal |
+   |---|---|---|---|
+   | `mosque-superadmin` | boleh | boleh | boleh |
+   | `mosque-officer` | boleh | ditolak | boleh |
+   | `mosque-qurban` | boleh | ditolak | ditolak |
+   | `mosque-finance` | ditolak | ditolak | boleh |
+   | `mosque-secretary` | ditolak | ditolak | boleh |
+   | `mosque-inventory` / `crm` / `humas` | ditolak | ditolak | ditolak |
+
+   Diuji: `tests/Feature/Authorization/CapabilityMiddlewareTest.php`.
 
 3. **Jadikan level global** (`organization_id` null). Menghapus duplikasi dan membuat langkah 1 cukup
    dilakukan sekali, bukan per organisasi.
 
 4. **Anggap `organization_user.role` mati.** Jangan dibaca, jangan dijadikan acuan.
+
+## Yang perlu Anda periksa setelah langkah 2
+
+Pencabutan berikut **disengaja**, tapi satu di antaranya patut ditinjau ulang karena menyangkut
+alur harian.
+
+⚠️ **`mosque-officer` kehilangan `print-mosque-charity-transactions`** — dan ini level yang dipakai
+**33 dari 56** pengurus masjid. Mereka boleh *mencatat* transaksi amal tapi tidak bisa mencetak
+kuitansinya. Mencatat tanpa bisa mencetak adalah alur yang patah.
+
+Kalau memang seharusnya boleh, tambahkan ke definisi level di `OrganizationSeeder`, lalu:
+
+```bash
+php artisan levels:audit        # perintah ini hanya memeriksa level superadmin
+```
+
+Untuk level non-superadmin belum ada perintahnya — tambahkan permission-nya di seeder dan jalankan
+ulang seeder organisasi, atau tambahkan manual lewat `user_level_permissions`.
+
+Pencabutan lain yang sudah diperiksa dan **benar**:
+
+- `mosque-qurban` kehilangan seluruh akses transaksi amal — petugas qurban bukan bendahara
+- `mosque-officer` dan `mosque-qurban` kehilangan `delete-qurban` — menghapus batch tetap wewenang Ketua DKM
+- `rt-finance`, `rt-humas`, `rt-field-officer` kehilangan `browse-rt-residents` — level mereka memang
+  tidak mencakup pengelolaan warga. Khusus `rt-field-officer` yang hanya punya `scan-resident-qr`,
+  ini konsisten: tugasnya memindai di lapangan, bukan membuka daftar
+
+## Temuan tambahan — permission hantu
+
+`ResidentController` merujuk `add-residents`, `edit-residents`, dan `delete-residents`. **Ketiganya
+tidak pernah ada** di tabel permission, jadi selama ini hanya varian `-rt-` yang benar-benar
+mencocokkan. Sudah dihapus dari guard.
 
 ## Yang sudah aman
 
@@ -159,5 +213,6 @@ Sisi **API mobile** tidak terkena temuan 1 dan 2. `CapabilityResolver` sudah lev
 sejak awal, dan `ResolveActiveOrganization` memverifikasi header konteks organisasi. Diuji: 18 test
 di `tests/Feature/API/`.
 
-Artinya web dan mobile **berbeda perilaku** sampai langkah 2 dikerjakan: bendahara bisa membuka
-qurban di web, tapi tidak melihatnya di mobile.
+Sejak langkah 2 selesai, **web dan mobile sudah sepakat**: keduanya membaca level lewat
+`CapabilityResolver` yang sama. Bendahara tidak melihat qurban di mobile, dan tidak bisa membukanya
+di web.
