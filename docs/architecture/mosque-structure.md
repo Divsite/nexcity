@@ -16,19 +16,22 @@ slug-nya, daftar itu terbelah:
 | `mosque-humas` | Humas/Media | **Jabatan struktural** |
 | `mosque-inventory` | Petugas Inventaris | **Jabatan struktural** |
 | `mosque-crm` | Petugas Donasi/CRM | **Jabatan struktural** |
-| `mosque-officer` | **Petugas Zakat** | **Kepanitiaan** |
+| `mosque-zakat` | **Petugas Zakat** | **Kepanitiaan** |
 | `mosque-qurban` | **Petugas Qurban** | **Kepanitiaan** |
 
 Dua hal yang tabiatnya berbeda dimasukkan ke satu kolom.
 
 ### Bukti dari data
 
-**33 dari 56** anggota Islamic Center Al-amanah memegang `mosque-officer` (Petugas Zakat).
+**33 dari 56** anggota Islamic Center Al-amanah memegang level Petugas Zakat.
 
 Angka itu janggal untuk sebuah jabatan struktural — masjid tidak punya 33 sekretaris. Tapi sangat
 wajar untuk **panitia zakat saat Ramadan**: banyak orang, sementara, sebagian relawan.
 
-Data itu sendiri sudah memberi tahu bahwa `mosque-officer` bukan jabatan.
+Data itu sendiri sudah memberi tahu bahwa itu bukan jabatan.
+
+> Slug-nya dulu `mosque-officer` — nama yang menyamarkan isinya. Sudah diganti jadi `mosque-zakat`
+> pada 8 Agustus 2026.
 
 ## Perbedaan tabiatnya
 
@@ -52,7 +55,7 @@ keduanya salah:
 
 Padahal di lapangan, pengurus merangkap panitia adalah hal biasa.
 
-Inilah kemungkinan besar alasan `mosque-officer` menjadi kabur: ia jadi tempat penampungan untuk
+Inilah kemungkinan besar alasan level Petugas Zakat menjadi kabur: ia jadi tempat penampungan untuk
 "orang yang mengerjakan sesuatu", karena struktur datanya tidak bisa menyatakan rangkap peran.
 
 ## Yang sudah jelas dan tidak perlu diubah
@@ -60,50 +63,58 @@ Inilah kemungkinan besar alasan `mosque-officer` menjadi kabur: ia jadi tempat p
 Struktur DKM yang permanen sudah benar dan sudah dipetakan: Ketua, Sekretaris, Keuangan, Humas,
 Inventaris, CRM/Donasi. Itu jabatan sungguhan dengan wewenang tetap.
 
-## Yang perlu diputuskan
+## Cara merapikannya
 
-**Apakah kepanitiaan dijadikan konsep tersendiri, atau tetap sebagai level?**
+Sebelum merancang tabel baru, satu hal perlu dilihat: **mekanismenya sudah ada.**
 
-### Pilihan A — biarkan sebagai level (perubahan paling kecil)
+```
+distribution_officers          : distribution_id + officer_id
+qurban_distribution_officers   : qurban_distribution_batch_id + officer_id
+```
 
-Hanya perbaiki penamaannya: `mosque-officer` → `mosque-zakat`, supaya sejajar dengan
-`mosque-qurban` dan berhenti berbohong.
+Kedua tabel itu menugaskan orang ke **distribusi atau batch tertentu**. Itu persis kepanitiaan —
+terikat program konkret, dan berakhir sendiri saat programnya selesai. Yang belum ada hanyalah
+**sambungannya ke otorisasi**.
 
-- Untung: tidak ada perubahan struktur, bisa dikerjakan sekarang
-- Rugi: rangkap peran tetap tidak bisa dinyatakan; panitia tidak pernah kedaluwarsa, jadi relawan
-  qurban tahun lalu tetap bisa scan kupon tahun ini
+### Bentuk yang disarankan
 
-### Pilihan B — pisahkan kepanitiaan dari jabatan
+| Konsep | Disimpan di | Memberi wewenang |
+|---|---|---|
+| **Jabatan** | `organization_user.level_slug` | Wewenang tetap selama menjabat |
+| **Penugasan** | `distribution_officers`, `qurban_distribution_officers` | Wewenang operasional **untuk distribusi/batch itu saja** |
 
-Jabatan tetap di `organization_user.level_slug`. Kepanitiaan pindah ke tabelnya sendiri, misalnya
-`organization_committee_members`: organisasi, user, jenis panitia, program/tahun, masa berlaku.
+Capability seseorang = **jabatan ∪ penugasan yang masih berjalan**.
 
-Capability seseorang = jabatan **∪** kepanitiaan yang masih berlaku.
+Ini lebih presisi daripada tabel kepanitiaan generik. Relawan yang ditugaskan ke batch qurban 1447 H
+bisa memindai kupon **batch itu** — bukan setiap batch, selamanya. Wewenangnya berakhir bersama
+programnya, tanpa perlu ada yang mencabut manual.
 
-- Untung: bendahara bisa merangkap panitia qurban tanpa kehilangan apa pun; kepanitiaan berakhir
-  sendiri saat programnya selesai; relawan tidak menumpuk wewenang antar tahun
-- Rugi: satu tabel dan satu migrasi baru; `CapabilityResolver` perlu menggabungkan dua sumber
+### Yang berubah bagi tiap orang
 
-### Rekomendasi
+| Kasus | Sekarang | Setelah dirapikan |
+|---|---|---|
+| Bendahara merangkap panitia qurban | Tidak bisa dinyatakan | `mosque-finance` + ditugaskan ke batch |
+| Relawan qurban dadakan | Diberi level `mosque-qurban` permanen | Tanpa level, cukup ditugaskan ke batch |
+| Pengurus qurban tetap | `mosque-qurban` | Tetap `mosque-qurban` |
 
-**Pilihan B**, tapi tidak sekarang.
+Perhatikan akibatnya: **level `mosque-zakat` dan `mosque-qurban` tidak lagi dibutuhkan untuk
+relawan.** Keduanya cukup dipakai untuk **koordinator** panitia yang memang jabatan. Itu menjelaskan
+kenapa 33 orang menumpuk di satu level — mereka dipaksa masuk ke sana karena penugasan tidak
+tersambung ke wewenang.
 
-Alasannya bukan teknis melainkan urutan: kepanitiaan baru benar-benar dipakai saat alur distribusi
-di lapangan berjalan (Fase 3). Sebelum ada yang memindai kupon, kemampuan menyatakan "bendahara
-merangkap panitia qurban 1447 H" belum menghasilkan apa-apa.
+### Kenapa belum dikerjakan sekarang
 
-Yang layak dikerjakan sekarang adalah **bagian dari Pilihan A yang tidak merugikan**: mengganti nama
-`mosque-officer` menjadi `mosque-zakat`. Slug yang berbohong akan menyesatkan setiap orang yang
-membacanya, termasuk saat Pilihan B dikerjakan nanti.
+Alasannya urutan, bukan kesulitan. Penugasan baru menghasilkan sesuatu ketika ada yang benar-benar
+memindai kupon di lapangan — yaitu Fase 3. Sebelum itu, kemampuan menyatakan "bendahara merangkap
+panitia qurban 1447 H" tidak mengubah apa pun yang terlihat.
 
-> ⚠️ Mengganti slug menyentuh `organization_user.level_slug`, `user_levels.slug`, dan setiap
-> pemeriksaan `level_slug` di kode (`like 'mosque-%'` aman; perbandingan persis tidak). Perlu
-> migrasi, bukan sekadar ubah seeder.
+Dikerjakan **bersama Fase 3**, bukan sebelumnya.
 
-## Kaitan dengan level global (langkah 3 audit)
+## Kaitan dengan level global
 
-Tidak bertabrakan. Menjadikan level global adalah soal **di mana definisinya disimpan** — dan itu
-tetap benar untuk jabatan maupun kepanitiaan, karena keduanya ditentukan pemilik platform.
+Level sudah dijadikan global pada 8 Agustus 2026 (langkah 3 audit) dan itu **tidak bertabrakan**
+dengan rencana di atas. Level global menjawab *di mana definisi disimpan* — tetap benar untuk
+jabatan maupun penugasan, karena keduanya ditentukan pemilik platform.
 
-Pilihan B mengubah **berapa banyak** yang bisa dipegang seseorang dan **berapa lama**, bukan siapa
-yang mendefinisikannya.
+Yang diubah rencana penugasan adalah **berapa banyak** peran yang bisa dipegang seseorang dan
+**berapa lama** — bukan siapa yang mendefinisikannya.
