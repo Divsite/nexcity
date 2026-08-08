@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
+use App\Http\Controllers\API\Distributions\DistributionController;
 use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
@@ -51,6 +52,12 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // mis-scan cannot silently record a distribution.
         Route::post('scan', [ScanController::class, 'scan'])
             ->middleware('capability:scan-resident-qr|scan-qurban-coupon|scan-zakat-coupon');
+
+        Route::get('distributions', [DistributionController::class, 'index'])
+            ->middleware('capability:browse-mosque-charity-distributions|browse-rt-residents');
+
+        Route::get('distributions/{distribution}/recipients', [DistributionController::class, 'recipients'])
+            ->middleware('capability:browse-mosque-charity-distributions|browse-rt-residents');
 
         Route::patch('distribution-recipients/{recipient}', [ScanController::class, 'markRecipient'])
             ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
