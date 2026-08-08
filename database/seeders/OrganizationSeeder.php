@@ -298,8 +298,12 @@ class OrganizationSeeder extends Seeder
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
             ],
+            // "Petugas Zakat" despite the slug — see docs/operations/mosque-structure.md
             'mosque-officer' => [
                 'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions',
+                // Recording a transaction without being able to print its
+                // receipt is a broken counter workflow. Added 2026-08-08.
+                'print-mosque-charity-transactions',
                 'browse-qurban', 'read-qurban',
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions', 'add-mosque-charity-distributions',
                 'scan-qurban-coupon', 'scan-zakat-coupon',
