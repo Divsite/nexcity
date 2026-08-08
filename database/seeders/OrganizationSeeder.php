@@ -254,7 +254,7 @@ class OrganizationSeeder extends Seeder
             ['name' => 'Ketua DKM', 'slug' => 'mosque-superadmin', 'description' => 'Akses penuh modul masjid'],
             ['name' => 'Sekretaris Masjid', 'slug' => 'mosque-secretary', 'description' => 'Administrasi, laporan, dan data jamaah'],
             ['name' => 'Keuangan Masjid', 'slug' => 'mosque-finance', 'description' => 'Kelola zakat & laporan'],
-            ['name' => 'Petugas Zakat', 'slug' => 'mosque-officer', 'description' => 'Distribusi & scan barcode'],
+            ['name' => 'Petugas Zakat', 'slug' => 'mosque-zakat', 'description' => 'Distribusi & scan barcode'],
             ['name' => 'Petugas Qurban', 'slug' => 'mosque-qurban', 'description' => 'Kelola kupon qurban & scan'],
             ['name' => 'Petugas Inventaris', 'slug' => 'mosque-inventory', 'description' => 'Kelola inventaris masjid'],
             ['name' => 'Petugas Donasi/CRM', 'slug' => 'mosque-crm', 'description' => 'Kelola donatur & CRM'],
@@ -298,8 +298,7 @@ class OrganizationSeeder extends Seeder
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
             ],
-            // "Petugas Zakat" despite the slug — see docs/operations/mosque-structure.md
-            'mosque-officer' => [
+            'mosque-zakat' => [
                 'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions',
                 // Recording a transaction without being able to print its
                 // receipt is a broken counter workflow. Added 2026-08-08.
@@ -442,7 +441,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'alamanah.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Zakat',
                             'responsibility_area' => 'Distribusi, pencatatan, dan scan barcode warga',
@@ -560,7 +559,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'darulmuminin.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Operasional',
                             'responsibility_area' => 'Distribusi logistik & barcode warga',
@@ -678,7 +677,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'alfalah.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Lapangan',
                             'responsibility_area' => 'Pelaksanaan distribusi & pemindaian barcode',

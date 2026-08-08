@@ -63,7 +63,9 @@ class AuditLevelPermissions extends Command
                 $totalMissing += $missing->count();
 
                 $rows[] = [
-                    $level->organization?->name ?? "org #{$level->organization_id}",
+                    // Levels are global now; an organization name only appears
+                    // if a partner-specific override was ever added.
+                    $level->organization?->name ?? '(global)',
                     $level->slug,
                     $held->count(),
                     $missing->count(),

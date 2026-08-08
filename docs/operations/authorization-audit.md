@@ -170,8 +170,25 @@ Urutannya penting; membalik nomor 2 dan 1 akan mengunci orang yang berhak.
 
    Diuji: `tests/Feature/Authorization/CapabilityMiddlewareTest.php`.
 
-3. **Jadikan level global** (`organization_id` null). Menghapus duplikasi dan membuat langkah 1 cukup
-   dilakukan sekali, bukan per organisasi.
+3. ✅ **Jadikan level global — selesai 8 Agustus 2026.**
+
+   Migrasi `2026_08_08_000100_make_user_levels_global`. Aman dijalankan karena setiap salinan sebuah
+   slug sudah memuat permission yang identik — diperiksa lebih dulu.
+
+   | | Sebelum | Sesudah |
+   |---|---|---|
+   | `user_levels` | 56 | **15** |
+   | `user_level_permissions` | 501 | **131** |
+   | Ber-`organization_id` null | 0 | **15** |
+
+   `CapabilityResolver` mendahulukan definisi milik organisasi kalau ada, lalu jatuh ke global. Jadi
+   override per-partner tetap mungkin nanti tanpa menulis ulang apa pun.
+
+   Menambah permission ke sebuah level sekarang **satu baris, satu kali** — bukan sekali per masjid.
+
+   Sekalian: `mosque-officer` → **`mosque-zakat`** (35 baris `organization_user`). Slug lama
+   berbohong; namanya selalu "Petugas Zakat", dan kodenya bahkan sudah menerjemahkannya jadi
+   `messages.zakat_officer`.
 
 4. **Anggap `organization_user.role` mati.** Jangan dibaca, jangan dijadikan acuan.
 

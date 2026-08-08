@@ -92,10 +92,13 @@ class CapabilityResolver
 
         return $memberships
             ->mapWithKeys(function (OrganizationUser $membership) use ($levels, $permissionsByLevel) {
-                $level = $levels->first(
-                    fn (UserLevel $candidate) => (int) $candidate->organization_id === (int) $membership->organization_id
-                        && $candidate->slug === $membership->level_slug
-                );
+                $matching = $levels->where('slug', $membership->level_slug);
+
+                // An organization's own definition wins over the global one.
+                $level = $matching->firstWhere(
+                    'organization_id',
+                    $membership->organization_id,
+                ) ?? $matching->firstWhere('organization_id', null);
 
                 return [
                     $membership->organization_id => [
@@ -136,14 +139,14 @@ class CapabilityResolver
             return collect();
         }
 
+        // Levels are defined once, globally (organization_id null). An
+        // organization-specific row is still honoured if one exists, so a
+        // future per-partner override would not need this rewritten.
         return UserLevel::query()
+            ->whereIn('slug', $withLevel->pluck('level_slug')->unique())
             ->where(function ($query) use ($withLevel) {
-                foreach ($withLevel as $membership) {
-                    $query->orWhere(function ($inner) use ($membership) {
-                        $inner->where('organization_id', $membership->organization_id)
-                            ->where('slug', $membership->level_slug);
-                    });
-                }
+                $query->whereNull('organization_id')
+                    ->orWhereIn('organization_id', $withLevel->pluck('organization_id')->unique());
             })
             ->get();
     }

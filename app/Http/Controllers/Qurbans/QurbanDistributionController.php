@@ -468,7 +468,7 @@ class QurbanDistributionController extends Controller
                 'id' => $member->user_id,
                 'name' => $member->user?->name,
                 'position' => $member->user?->mosqueProfile?->position
-                    ?? ($member->level_slug === 'mosque-officer' ? __('messages.zakat_officer') : null),
+                    ?? ($member->level_slug === 'mosque-zakat' ? __('messages.zakat_officer') : null),
             ])
             ->filter(fn ($item) => ! empty($item['id']))
             ->values();
