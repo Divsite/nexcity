@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Distributions;
 
+use App\Actions\Distributions\AttachRecipientPhoto;
 use App\Actions\Distributions\MarkRecipientStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Distributions\DistributionRecipient;
@@ -103,6 +104,45 @@ class ScanController extends Controller
             'distributed_at' => $updated->distributed_at?->toIso8601String(),
             'message' => 'Status penerima diperbarui.',
         ]);
+    }
+
+    /**
+     * Attaches one documentation photo to a recipient.
+     *
+     * Kept separate from marking so a failed upload never rolls back a
+     * recorded handover — the distribution happened whether or not the photo
+     * made it, and losing that record would be far worse than losing a photo.
+     */
+    public function attachPhoto(
+        Request $request,
+        DistributionRecipient $recipient,
+        AttachRecipientPhoto $attach,
+    ): JsonResponse {
+        $request->validate([
+            // 8 MB: a compressed phone photo lands well under this, and the
+            // limit stops an uncompressed original stalling a field upload.
+            'photo' => 'required|image|mimes:jpeg,jpg,png,webp|max:8192',
+        ]);
+
+        $organizationId = (int) $request->attributes->get('active_organization_id');
+        $recipient->loadMissing('distribution');
+
+        if ((int) $recipient->distribution?->organization_id !== $organizationId) {
+            return response()->json(['message' => 'Penerima ini bukan milik organisasi Anda.'], 403);
+        }
+
+        $attachment = $attach->handle(
+            $recipient,
+            $request->file('photo'),
+            $request->user(),
+        );
+
+        return response()->json([
+            'id' => $attachment->id,
+            'file_name' => $attachment->file_name,
+            'url' => asset('uploads/' . $attachment->file_path),
+            'message' => 'Foto tersimpan.',
+        ], 201);
     }
 
     protected function messageFor(string $status): string

@@ -61,5 +61,8 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         Route::patch('distribution-recipients/{recipient}', [ScanController::class, 'markRecipient'])
             ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
+
+        Route::post('distribution-recipients/{recipient}/photos', [ScanController::class, 'attachPhoto'])
+            ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
     });
 });

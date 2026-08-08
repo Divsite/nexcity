@@ -11,7 +11,9 @@ use App\Models\Organizations\UserLevelPermission;
 use App\Models\Profiles\UserResidentProfile;
 use App\Models\Users\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -203,6 +205,88 @@ class ScanEndpointTest extends TestCase
         $this->postJson('/api/v1/scan', ['qr_token' => 'apa-saja'], [
             'X-Organization-Id' => (string) $mosque->id,
         ])->assertForbidden();
+    }
+
+    #[Test]
+    public function a_photo_is_stored_against_the_recipient(): void
+    {
+        Storage::fake('uploads');
+
+        $mosque = $this->mosque('masjid-a');
+        $officer = $this->officer($mosque);
+        $recipient = $this->listResident($mosque, $this->resident());
+
+        Sanctum::actingAs($officer);
+
+        $this->postJson(
+            "/api/v1/distribution-recipients/{$recipient->id}/photos",
+            ['photo' => UploadedFile::fake()->image('bukti.jpg')],
+            ['X-Organization-Id' => (string) $mosque->id],
+        )->assertCreated();
+
+        $this->assertDatabaseHas('distribution_recipient_attachments', [
+            'distribution_recipient_id' => $recipient->id,
+            'created_by' => $officer->id,
+        ]);
+    }
+
+    #[Test]
+    public function photos_accumulate_rather_than_replacing_each_other(): void
+    {
+        // An officer photographs the goods, the handover, the house. Replacing
+        // on each upload would leave only the last one and quietly destroy the
+        // evidence the earlier shots were taken for.
+        Storage::fake('uploads');
+
+        $mosque = $this->mosque('masjid-a');
+        $recipient = $this->listResident($mosque, $this->resident());
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        foreach (['satu.jpg', 'dua.jpg'] as $name) {
+            $this->postJson(
+                "/api/v1/distribution-recipients/{$recipient->id}/photos",
+                ['photo' => UploadedFile::fake()->image($name)],
+                ['X-Organization-Id' => (string) $mosque->id],
+            )->assertCreated();
+        }
+
+        $this->assertSame(2, $recipient->attachments()->count());
+    }
+
+    #[Test]
+    public function a_non_image_is_refused(): void
+    {
+        Storage::fake('uploads');
+
+        $mosque = $this->mosque('masjid-a');
+        $recipient = $this->listResident($mosque, $this->resident());
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->postJson(
+            "/api/v1/distribution-recipients/{$recipient->id}/photos",
+            ['photo' => UploadedFile::fake()->create('laporan.pdf', 100)],
+            ['X-Organization-Id' => (string) $mosque->id],
+        )->assertStatus(422);
+    }
+
+    #[Test]
+    public function a_photo_cannot_be_attached_to_another_organizations_recipient(): void
+    {
+        Storage::fake('uploads');
+
+        $mine = $this->mosque('masjid-a');
+        $theirs = $this->mosque('masjid-b');
+        $foreign = $this->listResident($theirs, $this->resident());
+
+        Sanctum::actingAs($this->officer($mine));
+
+        $this->postJson(
+            "/api/v1/distribution-recipients/{$foreign->id}/photos",
+            ['photo' => UploadedFile::fake()->image('bukti.jpg')],
+            ['X-Organization-Id' => (string) $mine->id],
+        )->assertForbidden();
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
