@@ -140,9 +140,13 @@ Urutannya penting; membalik nomor 2 dan 1 akan mengunci orang yang berhak.
    Perintah ini **hanya menambah**, tidak pernah mencabut — jadi tidak bisa mengunci siapa pun.
    Exit code-nya bukan nol saat ada selisih, supaya bisa dipasang di CI atau pemeriksaan deploy.
 
-2. **Ubah pemeriksaan jadi level-authoritative.** ← berikutnya, dan sekarang aman dikerjakan Ganti `permission:` pada route yang di-scope
-   organisasi dengan pemeriksaan yang membaca level — `CapabilityResolver` sudah melakukannya untuk
-   API, dan bisa dipakai ulang lewat sebuah Gate atau middleware `capability:`.
+2. **Ubah pemeriksaan jadi level-authoritative.** ← berikutnya, dan sekarang sudah aman dikerjakan.
+
+   Ganti `permission:` pada route yang di-scope organisasi dengan pemeriksaan yang membaca level.
+   `CapabilityResolver` sudah melakukannya untuk API dan bisa dipakai ulang lewat sebuah Gate atau
+   middleware `capability:`.
+
+   Setelah langkah ini, **uji ulang tiap level** — inilah langkah yang bisa mencabut akses.
 
 3. **Jadikan level global** (`organization_id` null). Menghapus duplikasi dan membuat langkah 1 cukup
    dilakukan sekali, bukan per organisasi.
