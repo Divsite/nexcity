@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
+use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
 use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Home\HomeController;
@@ -64,5 +65,12 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         Route::post('distribution-recipients/{recipient}/photos', [ScanController::class, 'attachPhoto'])
             ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
+
+        // Phase 3.5 — recording charity at the counter.
+        Route::get('charity-types', [QuickCharityController::class, 'types'])
+            ->middleware('capability:browse-mosque-charity-transactions');
+
+        Route::post('charity-transactions', [QuickCharityController::class, 'store'])
+            ->middleware('capability:add-mosque-charity-transactions');
     });
 });
