@@ -124,11 +124,23 @@ Schema sudah menyiapkan jalan keluarnya — `user_levels.organization_id` boleh 
 
 Urutannya penting; membalik nomor 2 dan 1 akan mengunci orang yang berhak.
 
-1. **Lengkapi definisi level.** Minimal beri `mosque-superadmin` dan `rt-superadmin` semua permission
-   yang relevan untuk tipe organisasinya, termasuk `*-distribution-recipients`. Verifikasi dengan
-   membandingkan permission role vs level per level sampai selisihnya nol untuk superadmin.
+1. ✅ **Lengkapi definisi level — selesai 8 Agustus 2026.**
 
-2. **Ubah pemeriksaan jadi level-authoritative.** Ganti `permission:` pada route yang di-scope
+   `mosque-superadmin` kurang 6 permission (`print-mosque-charity-transactions` dan lima
+   `*-distribution-recipients`); `rt-superadmin` sudah lengkap. Seeder diperbaiki, dan 18 baris
+   ditambahkan ke data yang sudah ada (6 × 3 masjid). Ketua DKM Al-amanah: 44 → 50 capability.
+
+   Perkakasnya tetap ada dan bisa dijalankan kapan saja:
+
+   ```bash
+   php artisan levels:audit          # laporkan selisih, exit code 1 kalau ada
+   php artisan levels:audit --fix    # tambahkan yang kurang
+   ```
+
+   Perintah ini **hanya menambah**, tidak pernah mencabut — jadi tidak bisa mengunci siapa pun.
+   Exit code-nya bukan nol saat ada selisih, supaya bisa dipasang di CI atau pemeriksaan deploy.
+
+2. **Ubah pemeriksaan jadi level-authoritative.** ← berikutnya, dan sekarang aman dikerjakan Ganti `permission:` pada route yang di-scope
    organisasi dengan pemeriksaan yang membaca level — `CapabilityResolver` sudah melakukannya untuk
    API, dan bisa dipakai ulang lewat sebuah Gate atau middleware `capability:`.
 

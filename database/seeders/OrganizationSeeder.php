@@ -277,6 +277,11 @@ class OrganizationSeeder extends Seeder
                 'browse-mosque-charity-payments', 'read-mosque-charity-payments', 'edit-mosque-charity-payments', 'add-mosque-charity-payments', 'delete-mosque-charity-payments',
                 'browse-qurban', 'read-qurban', 'edit-qurban', 'add-qurban', 'delete-qurban',
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions', 'edit-mosque-charity-distributions', 'add-mosque-charity-distributions', 'delete-mosque-charity-distributions',
+                // Distribution recipients: no level granted these, so once
+                // authorization becomes level-based the DKM chair would have
+                // lost access to them. Audit 2026-08-08.
+                'browse-mosque-charity-distribution-recipients', 'read-mosque-charity-distribution-recipients', 'edit-mosque-charity-distribution-recipients', 'add-mosque-charity-distribution-recipients', 'delete-mosque-charity-distribution-recipients',
+                'print-mosque-charity-transactions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
                 'browse-mosque-inventory', 'read-mosque-inventory', 'edit-mosque-inventory', 'add-mosque-inventory', 'delete-mosque-inventory',
                 'browse-mosque-crm', 'read-mosque-crm', 'edit-mosque-crm', 'add-mosque-crm', 'delete-mosque-crm',
