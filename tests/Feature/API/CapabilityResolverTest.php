@@ -5,10 +5,13 @@ namespace Tests\Feature\API;
 use App\Models\Organizations\Organization;
 use App\Models\Organizations\OrganizationUser;
 use App\Models\Organizations\UserLevel;
+use App\Models\Distributions\Distribution;
+use App\Models\Distributions\DistributionOfficer;
 use App\Models\Organizations\UserLevelPermission;
 use App\Models\Users\User;
 use App\Services\Authorization\CapabilityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -161,6 +164,96 @@ class CapabilityResolverTest extends TestCase
         $this->assertNull(
             $this->resolver->defaultOrganizationId($user, collect()),
         );
+    }
+
+    #[Test]
+    public function a_volunteer_with_no_level_gains_capabilities_from_an_assignment(): void
+    {
+        // The case the whole committee design exists for: someone drafted for
+        // one qurban, who holds no office at all.
+        $organization = $this->makeOrganization();
+        $user = $this->makeMember($organization, null, []);
+
+        $this->assertSame([], $this->capabilitiesFor($user, $organization));
+
+        $this->assignTo($user, $this->makeDistribution($organization));
+
+        $this->assertContains(
+            'scan-qurban-coupon',
+            $this->capabilitiesFor($user->fresh(), $organization),
+        );
+    }
+
+    #[Test]
+    public function an_assignment_adds_without_taking_anything_away(): void
+    {
+        // A treasurer who also volunteers keeps their finance rights and gains
+        // the scan — the pairing that a single level_slug could never express.
+        $organization = $this->makeOrganization();
+        $user = $this->makeMember($organization, 'mosque-finance', [
+            'browse-mosque-charity-transactions',
+        ]);
+
+        $this->assignTo($user, $this->makeDistribution($organization));
+
+        $capabilities = $this->capabilitiesFor($user->fresh(), $organization);
+
+        $this->assertContains('browse-mosque-charity-transactions', $capabilities);
+        $this->assertContains('scan-qurban-coupon', $capabilities);
+    }
+
+    #[Test]
+    public function a_closed_distribution_grants_nothing(): void
+    {
+        // The grant lapses with the programme. Nobody has to remember to
+        // revoke a volunteer after Idul Adha.
+        $organization = $this->makeOrganization();
+        $user = $this->makeMember($organization, null, []);
+
+        $distribution = $this->makeDistribution($organization);
+        $this->assignTo($user, $distribution);
+        $distribution->update(['status' => 'completed']);
+
+        $this->assertSame([], $this->capabilitiesFor($user->fresh(), $organization));
+    }
+
+    #[Test]
+    public function an_assignment_elsewhere_grants_nothing_here(): void
+    {
+        $mine = $this->makeOrganization('mine');
+        $elsewhere = $this->makeOrganization('elsewhere');
+
+        $user = $this->makeMember($mine, null, []);
+        $this->assignTo($user, $this->makeDistribution($elsewhere));
+
+        $this->assertSame([], $this->capabilitiesFor($user->fresh(), $mine));
+    }
+
+    protected function makeDistribution(Organization $organization): Distribution
+    {
+        $suffix = fake()->unique()->numerify('####');
+        $typeId = DB::table('m_distribution_types')->insertGetId([
+            'name' => 'Tipe ' . $suffix,
+            'slug' => 'tipe-' . $suffix,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return Distribution::forceCreate([
+            'organization_id' => $organization->id,
+            'distribution_type_id' => $typeId,
+            'year' => 2026,
+            'title' => 'Distribusi',
+            'status' => 'pending',
+        ]);
+    }
+
+    protected function assignTo(User $user, Distribution $distribution): void
+    {
+        DistributionOfficer::forceCreate([
+            'distribution_id' => $distribution->id,
+            'officer_id' => $user->id,
+        ]);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

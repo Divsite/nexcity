@@ -26,6 +26,10 @@ use Illuminate\Support\Collection;
  */
 class CapabilityResolver
 {
+    public function __construct(protected AssignmentCapabilities $assignments)
+    {
+    }
+
     /**
      * Permission prefixes that only make sense inside an organization.
      *
@@ -91,7 +95,7 @@ class CapabilityResolver
             ->map(fn (Collection $rows) => $rows->pluck('permission_name')->unique()->sort()->values()->all());
 
         return $memberships
-            ->mapWithKeys(function (OrganizationUser $membership) use ($levels, $permissionsByLevel) {
+            ->mapWithKeys(function (OrganizationUser $membership) use ($user, $levels, $permissionsByLevel) {
                 $matching = $levels->where('slug', $membership->level_slug);
 
                 // An organization's own definition wins over the global one.
@@ -100,9 +104,24 @@ class CapabilityResolver
                     $membership->organization_id,
                 ) ?? $matching->firstWhere('organization_id', null);
 
+                $fromLevel = $level ? ($permissionsByLevel[$level->id] ?? []) : [];
+
+                // Assignment adds; it never withholds. A volunteer with no
+                // level gets what a live distribution needs, and an officer
+                // whose level already covers it loses nothing.
+                $fromAssignment = $this->assignments->forOrganization(
+                    $user,
+                    (int) $membership->organization_id,
+                );
+
                 return [
                     $membership->organization_id => [
-                        'capabilities' => $level ? ($permissionsByLevel[$level->id] ?? []) : [],
+                        'capabilities' => collect($fromLevel)
+                            ->merge($fromAssignment)
+                            ->unique()
+                            ->sort()
+                            ->values()
+                            ->all(),
                         'level_name' => $level?->name,
                     ],
                 ];
@@ -138,6 +157,7 @@ class CapabilityResolver
         if ($withLevel->isEmpty()) {
             return collect();
         }
+
 
         // Levels are defined once, globally (organization_id null). An
         // organization-specific row is still honoured if one exists, so a

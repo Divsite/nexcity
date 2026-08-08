@@ -102,13 +102,42 @@ relawan.** Keduanya cukup dipakai untuk **koordinator** panitia yang memang jaba
 kenapa 33 orang menumpuk di satu level — mereka dipaksa masuk ke sana karena penugasan tidak
 tersambung ke wewenang.
 
-### Kenapa belum dikerjakan sekarang
+### ✅ Sudah dikerjakan — 8 Agustus 2026
 
-Alasannya urutan, bukan kesulitan. Penugasan baru menghasilkan sesuatu ketika ada yang benar-benar
-memindai kupon di lapangan — yaitu Fase 3. Sebelum itu, kemampuan menyatakan "bendahara merangkap
-panitia qurban 1447 H" tidak mengubah apa pun yang terlihat.
+`AssignmentCapabilities` (`app/Services/Authorization/`) disambungkan ke `CapabilityResolver`.
+Capability seseorang kini = **global ∪ jabatan ∪ penugasan yang masih berjalan**.
 
-Dikerjakan **bersama Fase 3**, bukan sebelumnya.
+**Sifatnya menambah, tidak pernah mencabut.** Yang jabatannya sudah mencakup pekerjaan itu tidak
+kehilangan apa pun; menyalakannya tidak bisa mengunci siapa pun.
+
+Yang diberikan sebuah penugasan hidup:
+
+```
+browse-mosque-charity-distributions
+read-mosque-charity-distributions
+edit-mosque-charity-distributions
+scan-qurban-coupon
+scan-zakat-coupon
+```
+
+Berakhir sendiri: begitu `distributions.status` menjadi `completed`, pemberiannya berhenti. Tidak ada
+yang perlu ingat mencabut relawan setelah Idul Adha.
+
+Diuji (`tests/Feature/API/CapabilityResolverTest.php`):
+
+| Kasus | Hasil |
+|---|---|
+| Relawan tanpa jabatan, ditugaskan | dapat `scan-qurban-coupon` |
+| Bendahara merangkap panitia | keuangan **tetap** + dapat scan |
+| Distribusi sudah `completed` | tidak dapat apa-apa |
+| Ditugaskan di organisasi lain | tidak dapat apa-apa di sini |
+
+**Belum berlaku untuk RT.** Kepanitiaan adalah pola masjid; distribusi RT dikerjakan pengurus yang
+sudah punya jabatan. Memperluasnya ke RT adalah keputusan produk tersendiri.
+
+⚠️ Satu catatan: `edit-mosque-charity-distributions` lebih luas dari yang dibutuhkan — itu sekadar
+yang diminta endpoint penandaan saat ini. Permission `mark-distribution-recipient` yang lebih sempit
+akan membuat relawan bisa mencatat penyerahan tanpa sekaligus bisa mengubah struktur distribusinya.
 
 ## Kaitan dengan level global
 
