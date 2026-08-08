@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
+use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
@@ -44,5 +45,14 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         Route::get('organizations/{slug}/detail', [OrganizationDetailController::class, 'detail']);
         Route::get('organizations/{slug}/qurban-programs', [OrganizationDetailController::class, 'qurbanPrograms']);
         Route::get('organizations/{slug}/qurban-programs/{programId}', [OrganizationDetailController::class, 'qurbanProgramDetail']);
+
+        // Phase 3 — field scanning.
+        // A scan only reads; marking is a separate, deliberate act, so a
+        // mis-scan cannot silently record a distribution.
+        Route::post('scan', [ScanController::class, 'scan'])
+            ->middleware('capability:scan-resident-qr|scan-qurban-coupon|scan-zakat-coupon');
+
+        Route::patch('distribution-recipients/{recipient}', [ScanController::class, 'markRecipient'])
+            ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
     });
 });
