@@ -211,6 +211,8 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
 
     Route::resource('organizations', OrganizationController::class);
     Route::resource('residents', ResidentController::class)->parameters(['residents' => 'resident']);
+    Route::get('residents-qr-cards', [ResidentController::class, 'qrCards'])->name('residents.qr-cards');
+    Route::get('residents/{resident}/qr-card', [ResidentController::class, 'qrCard'])->name('residents.qr-card');
 
     // master data modules
     Route::get('master-data', [MasterDataController::class, 'index'])->name('master-data.index');
