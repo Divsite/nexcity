@@ -24,6 +24,9 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Roadmap implementasi qurban, V1 wajib, dan migration plan.
 - `docs/operations/qurban-v1-migration-sequence.md`
   Daftar final nama file migration V1 dan urutan dependency-nya.
+- `docs/operations/authorization-audit.md`
+  Audit otorisasi 8 Agustus 2026: route qurban bisa ditembus URL manual karena
+  `permission:` memeriksa role, bukan level. Berisi urutan perbaikan.
 - `docs/operations/known-gaps-and-next-steps.md`
   Known issues, keputusan tertunda, dan backlog core.
 
