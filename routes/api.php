@@ -7,6 +7,7 @@ use App\Http\Controllers\API\Distributions\DistributionController;
 use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Dues\MyDuesController;
 use App\Http\Controllers\API\Home\HomeController;
+use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,10 @@ Route::middleware(['openclaw.key'])->group(function () {
 Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
     Route::prefix('v1')->group(function () {
         Route::get('home', [HomeController::class, 'index']);
+
+        // The mosque admin home. Guarded by any one of the officer
+        // capabilities: the screen adapts to what the caller may see.
+        Route::get('mosque/summary', [MosqueSummaryController::class, 'index']);
         Route::get('organizations', [OrganizationController::class, 'index']);
         Route::get('organizations/{slug}', [OrganizationController::class, 'show']);
 
