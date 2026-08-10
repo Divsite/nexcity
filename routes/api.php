@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\Auth\AuthController;
+use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
 use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
@@ -78,6 +79,10 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
             ->middleware('capability:browse-resident-dues');
 
         // Phase 3.5 — recording charity at the counter.
+        // The Amal tab: the ledger it lists, and the types it filters by.
+        Route::get('charity-transactions', [CharityListController::class, 'index'])
+            ->middleware('capability:browse-mosque-charity-transactions');
+
         Route::get('charity-types', [QuickCharityController::class, 'types'])
             ->middleware('capability:browse-mosque-charity-transactions');
 
