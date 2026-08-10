@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogs\ActivityLogController;
 use App\Http\Controllers\AuthenticationLogs\AuthenticationLogController;
 use App\Http\Controllers\Charities\CharityTransactionController;
 use App\Http\Controllers\Dashboards\DashboardController;
+use App\Http\Controllers\Dues\RtDuesController;
 use App\Http\Controllers\Forms\BuilderController;
 use App\Http\Controllers\Forms\FormController;
 use App\Http\Controllers\Forms\FillFormController;
@@ -283,7 +284,20 @@ Auth::routes(['register' => config('core.register_enabled'), 'verify' => config(
         })->name('citizen.data');
         Route::get('inventory', ModulePlaceholderController::class)->name('inventory')->defaults('slug', 'rt-inventory');
         Route::get('events', ModulePlaceholderController::class)->name('events')->defaults('slug', 'rt-events');
-        Route::get('dues', ModulePlaceholderController::class)->name('dues')->defaults('slug', 'rt-dues');
+        // Iuran warga. `rt.dues` keeps its name so the seeded menu entry keeps
+        // pointing here now that it is no longer a placeholder.
+        Route::get('dues', [RtDuesController::class, 'index'])->name('dues');
+        Route::post('dues', [RtDuesController::class, 'store'])->name('dues.store');
+
+        // Golongan warga (Ber KK / Tidak Ber KK). Declared before the wildcard
+        // below, or `dues/{scheme}` would swallow it.
+        Route::get('dues/tiers', [RtDuesController::class, 'tiers'])->name('dues.tiers');
+        Route::patch('dues/tiers', [RtDuesController::class, 'updateTiers'])->name('dues.tiers.update');
+
+        Route::get('dues/periods/{period}', [RtDuesController::class, 'period'])->name('dues.period');
+        Route::patch('dues/bills/{bill}', [RtDuesController::class, 'updateBill'])->name('dues.bills.update');
+        Route::get('dues/{scheme}', [RtDuesController::class, 'show'])->name('dues.show');
+        Route::patch('dues/{scheme}', [RtDuesController::class, 'update'])->name('dues.update');
         Route::get('news', ModulePlaceholderController::class)->name('news')->defaults('slug', 'rt-news');
         Route::get('feedback', ModulePlaceholderController::class)->name('feedback')->defaults('slug', 'rt-feedback');
         Route::get('membership', [MembershipController::class, 'index'])

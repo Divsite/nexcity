@@ -5,6 +5,7 @@ use App\Http\Controllers\API\Charities\CharitySummaryController;
 use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
 use App\Http\Controllers\API\Distributions\ScanController;
+use App\Http\Controllers\API\Dues\MyDuesController;
 use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
@@ -65,6 +66,11 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         Route::post('distribution-recipients/{recipient}/photos', [ScanController::class, 'attachPhoto'])
             ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
+
+        // Iuran — a resident reading their own dues. Scoped to the caller, so
+        // there is no id here to tamper with.
+        Route::get('me/dues', [MyDuesController::class, 'index'])
+            ->middleware('capability:browse-resident-dues');
 
         // Phase 3.5 — recording charity at the counter.
         Route::get('charity-types', [QuickCharityController::class, 'types'])
