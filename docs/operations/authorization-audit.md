@@ -224,6 +224,30 @@ Pencabutan lain yang sudah diperiksa dan **benar**:
 tidak pernah ada** di tabel permission, jadi selama ini hanya varian `-rt-` yang benar-benar
 mencocokkan. Sudah dihapus dari guard.
 
+## Temuan 6 — `capability:` membaca organisasi yang salah (diperbaiki 10 Agustus 2026)
+
+`RequireCapability` menghitung capability memakai `defaultOrganizationId()` — keanggotaan utama
+pengguna — dan mengabaikan `active_organization_id` yang sudah disiapkan `ResolveActiveOrganization`
+dari header `X-Organization-Id`.
+
+Untuk pengguna satu organisasi tidak ada bedanya, dan itulah kenapa lolos begitu lama. Untuk
+pengguna multi-organisasi salah di **dua arah** sekaligus:
+
+- **Terlalu longgar.** Bendahara di RT A yang juga anggota biasa di Masjid B tetap dinilai dengan
+  level RT A pada setiap request. Bertindak di Masjid B, ia membawa serta wewenang RT A.
+- **Terlalu ketat.** Relawan yang level pemindaiannya justru ada di masjid kedua akan ditolak saat
+  memindai di masjid tempat ia benar-benar berdiri.
+
+Perbaikannya: baca `active_organization_id` dari request, dan jatuh kembali ke keanggotaan default
+hanya kalau tidak ada header — itulah cara aplikasi web memanggil, karena ia tidak punya pengalih
+organisasi pada request.
+
+Header-nya tetap tidak bisa dipakai berbelanja level: `ResolveActiveOrganization` sudah menolak
+organisasi yang bukan tempat pengguna menjadi anggota, sebelum capability dihitung.
+
+Diuji di `tests/Feature/Authorization/CapabilityMiddlewareTest.php` — empat test, dua di antaranya
+memang gagal kalau perbaikan ini dicabut (sudah diverifikasi, bukan test kosong).
+
 ## Yang sudah aman
 
 Sisi **API mobile** tidak terkena temuan 1 dan 2. `CapabilityResolver` sudah level-authoritative

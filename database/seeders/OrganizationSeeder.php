@@ -340,8 +340,19 @@ class OrganizationSeeder extends Seeder
                 'browse-rt-dues', 'read-rt-dues', 'edit-rt-dues', 'add-rt-dues',
                 'browse-rt-reports',
             ],
+            // A real position, held by the one or two people answerable for a
+            // distribution — not an account for every pair of hands. Helpers
+            // brought along on the day are recorded in the distribution's
+            // notes, which keeps the resident list free of accounts that are
+            // used once and never again.
+            //
+            // Reading the resident list is the job, not a privilege: you cannot
+            // hand out sembako without knowing who is on it. Scanning alone
+            // left this level with no screen at all — someone logged in and
+            // found an empty sidebar.
             'rt-field-officer' => [
                 'scan-resident-qr',
+                'browse-rt-residents', 'read-rt-residents',
             ],
             'rt-humas' => [
                 'browse-rt-events', 'browse-rt-news', 'browse-rt-feedback',

@@ -130,6 +130,49 @@ class CapabilityResolver
     }
 
     /**
+     * Whether the user holds a capability right now.
+     *
+     * The single answer that `capability:` middleware, the Blade `@capability`
+     * directive, and any controller-side check must all read. Three places used
+     * to decide this independently and drifted apart — the sidebar and the
+     * page-level guard disagreed with the button that opened the form.
+     *
+     * Held means: granted globally (account-level permissions, which come from
+     * the role) **or** by the user's level in the organization they are acting
+     * in. Organization-scoped names are never granted by the role alone — that
+     * is the hole documented in docs/operations/authorization-audit.md.
+     *
+     * @param  int|null  $organizationId  the organization being acted in;
+     *                                    defaults to the user's own
+     */
+    public function holds(User $user, string $permission, ?int $organizationId = null): bool
+    {
+        if ($user->hasRole('superadmin')) {
+            return true;
+        }
+
+        if (in_array($permission, $this->globalCapabilities($user), true)) {
+            return true;
+        }
+
+        $memberships = $user->organizationMemberships()->get();
+
+        $activeId = $organizationId ?? $this->defaultOrganizationId($user, $memberships);
+
+        if ($activeId === null) {
+            return false;
+        }
+
+        $resolved = $this->resolveByOrganization($user, $memberships);
+
+        return in_array(
+            $permission,
+            $resolved[$activeId]['capabilities'] ?? [],
+            true,
+        );
+    }
+
+    /**
      * The organization a session starts in: the primary membership, else the
      * first one, else the resident's own RT.
      *
