@@ -47,18 +47,11 @@ class CharityListController extends Controller
                 $validated['type_id'] ?? null,
                 fn ($q, $typeId) => $q->where('charity_type_id', $typeId),
             )
-            ->with([
-                // The type's label lives on its source, not on the type — the
-                // same relation QuickCharityController reads to list them.
-                'charityType.source:id,name,slug',
-                // Six relations, one figure. See the class note.
-                'fitrahReceipt',
-                'fidyaReceipt',
-                'malReceipt',
-                'donationReceipt',
-                'almsReceipt',
-                'endowmentReceipt',
-            ])
+            // The model's own scope, not a hand-written list: it already loads
+            // the six receipts and the type's source, and staying on it means
+            // a seventh receipt type would reach here without anyone
+            // remembering to add it.
+            ->withCharityRelations()
             ->latest('id');
 
         // Paginated: a mosque in Ramadan records hundreds a week, and the
@@ -73,6 +66,10 @@ class CharityListController extends Controller
                     'type_id' => $t->charity_type_id,
                     'payer_name' => $t->payer_name,
                     'payment_method' => $t->payment_method,
+                    // Cancelled rows stay visible — a ledger that hides them
+                    // cannot be reconciled — but they are marked, and the
+                    // totals below leave them out.
+                    'status' => $t->status,
                     'money' => $t->detailMoneyAmount(),
                     'rice' => $t->detailRiceAmount(),
                     'recorded_at' => $t->created_at?->toIso8601String(),
@@ -82,6 +79,10 @@ class CharityListController extends Controller
                 'current_page' => $transactions->currentPage(),
                 'last_page' => $transactions->lastPage(),
                 'total' => $transactions->total(),
+                // Paid only, matching the web recap. Counting cancelled ones
+                // would have the app and the web report different totals for
+                // the same day — 288 against 285.
+                'total_paid' => (clone $query)->paid()->count(),
             ],
         ]);
     }
