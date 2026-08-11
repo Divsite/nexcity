@@ -29,8 +29,12 @@ class DistributionController extends Controller
             ->where('organization_id', $organizationId)
             ->withCount([
                 'recipients',
+                // Only 'distributed'. The web's own summary tallies redirected
+                // with failed, and progress that disagrees between the two is
+                // worse than progress that is simply wrong — nobody can tell
+                // which figure to trust.
                 'recipients as distributed_count' => fn ($query) => $query
-                    ->whereIn('status', ['distributed', 'redirected']),
+                    ->where('status', 'distributed'),
             ])
             ->latest('id')
             ->get()
@@ -63,7 +67,7 @@ class DistributionController extends Controller
         }
 
         $recipients = DistributionRecipient::query()
-            ->with(['resident.residentProfile', 'officer'])
+            ->with(['resident.residentProfile', 'officer', 'distributionClass.source'])
             ->where('distribution_id', $distribution->id)
             ->get()
             ->map(fn (DistributionRecipient $recipient) => [
@@ -76,8 +80,15 @@ class DistributionController extends Controller
                 'has_card' => $recipient->resident?->residentProfile?->qr_token !== null,
                 'address' => $recipient->recipient_address,
                 'status' => $recipient->status,
-                'amount_money' => $recipient->amount_money,
-                'amount_rice' => $recipient->amount_rice,
+                // The golongan is where the entitlement usually lives: 200 of
+                // 207 real rows leave the per-recipient columns null and take
+                // the figure from their class. An officer needs to know what to
+                // hand over, not merely that someone qualifies.
+                'class_name' => $recipient->distributionClass?->source?->name,
+                'amount_money' => $recipient->amount_money
+                    ?? $recipient->distributionClass?->get_money,
+                'amount_rice' => $recipient->amount_rice
+                    ?? $recipient->distributionClass?->get_rice,
                 'distributed_at' => $recipient->distributed_at?->toIso8601String(),
                 'distributed_by' => $recipient->officer?->name,
             ]);

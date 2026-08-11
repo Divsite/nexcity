@@ -107,6 +107,83 @@ class DistributionListTest extends TestCase
     }
 
     #[Test]
+    public function a_recipient_inherits_the_entitlement_of_their_golongan(): void
+    {
+        // 200 of 207 real rows leave the per-recipient amounts null and take
+        // the figure from their class. An officer holding a sack of rice needs
+        // to know what to hand over, not merely that someone qualifies.
+        $mosque = $this->mosque();
+        $distribution = $this->distribution($mosque);
+
+        $classId = $this->distributionClass($mosque, 'Fakir Miskin Gol 2', 100000, 4);
+
+        $this->recipient($distribution, $this->resident())
+            ->update(['distribution_class_id' => $classId]);
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->getJson("/api/v1/distributions/{$distribution->id}/recipients", [
+            'X-Organization-Id' => (string) $mosque->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.0.class_name', 'Fakir Miskin Gol 2')
+            // Numeric, not a decimal string: sqlite and MySQL disagree on how
+            // the cast surfaces, and the live response sends a number.
+            ->assertJsonPath('data.0.amount_money', fn ($v) => (float) $v === 100000.0)
+            ->assertJsonPath('data.0.amount_rice', fn ($v) => (float) $v === 4.0);
+    }
+
+    #[Test]
+    public function a_per_recipient_amount_overrides_the_golongan(): void
+    {
+        // The columns exist as an override for the exceptional case — someone
+        // given more or less than their class by decision of the committee.
+        $mosque = $this->mosque();
+        $distribution = $this->distribution($mosque);
+
+        $classId = $this->distributionClass($mosque, 'Fakir Miskin Gol 2', 100000, 4);
+
+        $this->recipient($distribution, $this->resident())->update([
+            'distribution_class_id' => $classId,
+            'amount_money' => 250000,
+        ]);
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->getJson("/api/v1/distributions/{$distribution->id}/recipients", [
+            'X-Organization-Id' => (string) $mosque->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.0.amount_money', fn ($v) => (float) $v === 250000.0);
+    }
+
+    #[Test]
+    public function only_distributed_counts_towards_progress(): void
+    {
+        // The web's own summary tallies redirected with failed. Two systems
+        // reporting different progress for one distribution is worse than
+        // either figure being wrong.
+        $mosque = $this->mosque();
+        $distribution = $this->distribution($mosque);
+
+        $this->recipient($distribution, $this->resident())
+            ->update(['status' => 'distributed']);
+        $this->recipient($distribution, $this->resident())
+            ->update(['status' => 'redirected']);
+        $this->recipient($distribution, $this->resident())
+            ->update(['status' => 'failed']);
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->getJson('/api/v1/distributions', [
+            'X-Organization-Id' => (string) $mosque->id,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.0.recipients_count', 3)
+            ->assertJsonPath('data.0.distributed_count', 1);
+    }
+
+    #[Test]
     public function another_organizations_recipient_list_is_refused(): void
     {
         $mine = $this->mosque();
@@ -222,6 +299,31 @@ class DistributionListTest extends TestCase
             'year' => 2026,
             'title' => $title,
             'status' => 'ongoing',
+        ]);
+    }
+
+    /** A golongan and the entitlement it carries. */
+    protected function distributionClass(
+        Organization $mosque,
+        string $name,
+        float $money,
+        float $rice,
+    ): int {
+        $sourceId = DB::table('m_distribution_class_sources')->insertGetId([
+            'name' => $name,
+            'slug' => Str::slug($name) . '-' . fake()->unique()->numerify('###'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return DB::table('distribution_classes')->insertGetId([
+            'organization_id' => $mosque->id,
+            'distribution_class_source_id' => $sourceId,
+            'year' => 2026,
+            'get_money' => $money,
+            'get_rice' => $rice,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

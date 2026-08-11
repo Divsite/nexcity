@@ -82,7 +82,9 @@ class ScanResolver
         ?int $distributionId,
     ): ?DistributionRecipient {
         return DistributionRecipient::query()
-            ->with('distribution')
+            // The golongan carries the entitlement, so it is loaded with the
+            // recipient rather than fetched per row afterwards.
+            ->with(['distribution', 'distributionClass.source', 'officer'])
             ->where('resident_id', $residentId)
             ->when(
                 $distributionId !== null,
@@ -137,8 +139,18 @@ class ScanResolver
             'distribution_id' => $recipient->distribution_id,
             'distribution_title' => $recipient->distribution?->title,
             'state' => $recipient->status,
-            'amount_money' => $recipient->amount_money,
-            'amount_rice' => $recipient->amount_rice,
+            // What this person is actually owed. The officer is standing in
+            // the courtyard holding a phone and a sack of rice — "entitled" on
+            // its own does not tell them what to hand over.
+            //
+            // The per-recipient columns are an override and are usually null:
+            // 200 of 207 real rows leave them empty and take the figure from
+            // their golongan instead.
+            'amount_money' => $recipient->amount_money
+                ?? $recipient->distributionClass?->get_money,
+            'amount_rice' => $recipient->amount_rice
+                ?? $recipient->distributionClass?->get_rice,
+            'class_name' => $recipient->distributionClass?->source?->name,
             'distributed_at' => $recipient->distributed_at?->toIso8601String(),
             'distributed_by' => $recipient->officer?->name,
         ];
