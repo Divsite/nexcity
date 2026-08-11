@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Distributions\Distribution;
 use App\Models\Distributions\DistributionRecipient;
 use Illuminate\Http\JsonResponse;
-use App\Services\Menus\MenuContextResolver;
 use Illuminate\Http\Request;
 
 /**
@@ -107,25 +106,14 @@ class DistributionController extends Controller
     /**
      * The organization this request is acting in.
      *
-     * The header is authoritative when sent — `ResolveActiveOrganization` has
-     * already verified membership — but the mobile client does not send one, so
-     * falling back to the caller's own organization is what makes the endpoint
-     * work at all.
-     *
-     * Without the fallback this read `(int) null` = 0 and quietly filtered on
-     * `organization_id = 0`: no error, no distributions, and an empty screen
-     * that looked like an RT with nothing scheduled.
+     * `ResolveActiveOrganization` has already verified the header when one was
+     * sent, and supplied the caller's default organization when one was not.
+     * This endpoint used to carry its own fallback because it was the first
+     * place the missing header was noticed; that fallback now lives in the
+     * middleware, where every endpoint gets it instead of just this one.
      */
     protected function organizationId(Request $request): int
     {
-        $fromHeader = $request->attributes->get('active_organization_id');
-
-        if (is_int($fromHeader)) {
-            return $fromHeader;
-        }
-
-        [, $organization] = app(MenuContextResolver::class)->resolve($request->user());
-
-        return (int) ($organization?->id ?? 0);
+        return (int) $request->attributes->get('active_organization_id');
     }
 }

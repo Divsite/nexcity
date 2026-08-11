@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Authorization\CapabilityResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +31,7 @@ class ResolveActiveOrganization
         $organizationId = $request->header('X-Organization-Id');
 
         if (blank($organizationId)) {
-            return $next($request);
+            return $this->withDefault($request, $next);
         }
 
         if (! ctype_digit((string) $organizationId)) {
@@ -63,6 +64,41 @@ class ResolveActiveOrganization
         }
 
         $request->attributes->set('active_organization_id', $organizationId);
+
+        return $next($request);
+    }
+
+    /**
+     * No header: fall back to the organization the user acts in by default.
+     *
+     * A missing header used to mean controllers read null, cast it to 0, and
+     * scoped their queries to organization 0 — which exists nowhere, so the
+     * response was an empty list. On screen that is indistinguishable from a
+     * mosque with no data, and it silently emptied the charity type filter and
+     * broke the recording form for months.
+     *
+     * The fallback is the same one CapabilityResolver uses, so an endpoint and
+     * the permission check guarding it can never disagree about which
+     * organization the caller is in. It is not a security relaxation: the
+     * default is derived from the user's own memberships, never from input.
+     */
+    protected function withDefault(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return $next($request);
+        }
+
+        $resolver = app(CapabilityResolver::class);
+        $default = $resolver->defaultOrganizationId(
+            $user,
+            $user->organizationMemberships()->get(),
+        );
+
+        if ($default !== null) {
+            $request->attributes->set('active_organization_id', $default);
+        }
 
         return $next($request);
     }
