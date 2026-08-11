@@ -34,11 +34,20 @@ class QuickCharityController extends Controller
     {
         $organizationId = (int) $request->attributes->get('active_organization_id');
 
+        $validated = $request->validate([
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        // Follows the year selector, because the filter chips above the ledger
+        // are built from this. A mosque that renamed or retired a type would
+        // otherwise offer this year's chips over last year's rows.
+        $year = (int) ($validated['year'] ?? now()->year);
+
         $types = CharityType::query()
             ->with('source')
             ->where('organization_id', $organizationId)
             ->where('is_active', true)
-            ->where('year', now()->year)
+            ->where('year', $year)
             ->get()
             ->map(fn (CharityType $type) => [
                 'id' => $type->id,

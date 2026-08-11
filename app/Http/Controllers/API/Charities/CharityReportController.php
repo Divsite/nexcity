@@ -43,10 +43,26 @@ class CharityReportController extends Controller
 
         $validated = $request->validate([
             'period' => ['nullable', 'in:' . implode(',', self::PERIODS)],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ]);
 
+        $now = CarbonImmutable::now();
+        $year = (int) ($validated['year'] ?? $now->year);
         $period = $validated['period'] ?? 'month';
-        [$start, $end] = $this->window($period, CarbonImmutable::now());
+
+        // "Hari ini" and "bulan ini" have no meaning inside a year that has
+        // already ended — there is no today in 2024. Rather than answer for a
+        // window nobody asked about, the period widens to the year and the
+        // response says so, so the screen can label what it is showing.
+        if ($year !== $now->year) {
+            $period = 'year';
+        }
+
+        $anchor = $year === $now->year
+            ? $now
+            : $now->setDate($year, 12, 31)->endOfDay();
+
+        [$start, $end] = $this->window($period, $anchor);
         [$prevStart, $prevEnd] = $this->previousWindow($period, $start);
 
         $current = $this->totals($organization->id, $start, $end);
@@ -54,6 +70,7 @@ class CharityReportController extends Controller
 
         return response()->json([
             'period' => $period,
+            'year' => $year,
             'starts_at' => $start->toDateString(),
             'ends_at' => $end->toDateString(),
 

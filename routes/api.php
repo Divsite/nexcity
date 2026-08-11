@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\API\Announcements\AnnouncementController;
 use App\Http\Controllers\API\Auth\AuthController;
+use App\Http\Controllers\API\Charities\AvailableYearsController;
 use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharityReportController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
 use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
+use App\Http\Controllers\API\Distributions\DistributionSummaryController;
 use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Dues\MyDuesController;
 use App\Http\Controllers\API\Home\HomeController;
@@ -89,6 +91,13 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // aggregate over different windows.
         Route::get('charity-report', [CharityReportController::class, 'index'])
             ->middleware('capability:browse-mosque-charity-transactions');
+
+        // The year selector's options. Offered years only — see the
+        // controller for why a generated range is worse than useless.
+        Route::get('years', [AvailableYearsController::class, 'index']);
+
+        // A year of distributions: the totals, and who is still owed.
+        Route::get('distribution-summary', [DistributionSummaryController::class, 'index']);
 
         Route::get('charity-types', [QuickCharityController::class, 'types'])
             ->middleware('capability:browse-mosque-charity-transactions');

@@ -25,8 +25,14 @@ class DistributionController extends Controller
     {
         $organizationId = $this->organizationId($request);
 
+        $validated = $request->validate([
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+        $year = (int) ($validated['year'] ?? now()->year);
+
         $distributions = Distribution::query()
             ->where('organization_id', $organizationId)
+            ->where('year', $year)
             ->withCount([
                 'recipients',
                 // Only 'distributed'. The web's own summary tallies redirected

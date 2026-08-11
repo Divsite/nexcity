@@ -38,11 +38,18 @@ class CharityListController extends Controller
 
         $validated = $request->validate([
             'type_id' => ['nullable', 'integer'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
         ]);
 
+        // Defaults to the year the officer is standing in. Sending no year and
+        // getting every year ever recorded would put a 2024 receipt at the top
+        // of a screen labelled with today's date.
+        $year = (int) ($validated['year'] ?? now()->year);
+
         $query = CharityTransaction::query()
             ->where('organization_id', $organization->id)
+            ->where('year', $year)
             ->when(
                 $validated['type_id'] ?? null,
                 fn ($q, $typeId) => $q->where('charity_type_id', $typeId),
@@ -76,6 +83,7 @@ class CharityListController extends Controller
                 ],
             )->values(),
             'meta' => [
+                'year' => $year,
                 'current_page' => $transactions->currentPage(),
                 'last_page' => $transactions->lastPage(),
                 'total' => $transactions->total(),
