@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\Announcements\AnnouncementController;
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharityReportController;
@@ -94,5 +95,13 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         Route::post('charity-transactions', [QuickCharityController::class, 'store'])
             ->middleware('capability:add-mosque-charity-transactions');
+
+        // Announcements. No capability middleware: reading a notice is not a
+        // privilege, it is the point. Who may read which one is decided per
+        // row by Announcement::scopeVisibleTo, because the answer differs
+        // between an RT's kerja bakti and a mosque's open kajian.
+        Route::get('announcements', [AnnouncementController::class, 'index']);
+        Route::get('announcements/{announcement}', [AnnouncementController::class, 'show']);
+        Route::get('organizations/{slug}/announcements', [AnnouncementController::class, 'forOrganization']);
     });
 });

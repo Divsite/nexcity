@@ -1924,6 +1924,10 @@ return [
     'payment_method' => 'Metode pembayaran',
     'pending' => 'Belum bayar',
     'organization_not_found' => 'Organisasi tidak ditemukan.',
+    'unknown' => 'Tidak diketahui',
+
+    // Pengumuman
+    'announcement_not_found' => 'Pengumuman tidak ditemukan.',
 
     // Iuran: skema, tarif, golongan
     'dues_scheme' => 'Skema Iuran',

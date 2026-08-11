@@ -1900,6 +1900,10 @@ return [
     'payment_method' => 'Payment method',
     'pending' => 'Unpaid',
     'organization_not_found' => 'Organization not found.',
+    'unknown' => 'Unknown',
+
+    // Pengumuman
+    'announcement_not_found' => 'Announcement not found.',
 
     // Iuran: skema, tarif, golongan
     'dues_scheme' => 'Dues Scheme',
