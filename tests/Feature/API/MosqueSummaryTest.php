@@ -3,6 +3,7 @@
 namespace Tests\Feature\API;
 
 use App\Models\Distributions\Distribution;
+use App\Models\Distributions\DistributionRecipient;
 use App\Models\Organizations\Organization;
 use App\Models\Organizations\OrganizationUser;
 use App\Models\Organizations\UserLevel;
@@ -38,15 +39,17 @@ class MosqueSummaryTest extends TestCase
     }
 
     #[Test]
-    public function open_distributions_are_counted_apart_from_finished_ones(): void
+    public function the_dashboard_counts_people_waiting_not_programmes(): void
     {
-        // The actionable number: what an officer might have to go and do
-        // something about today, not the lifetime tally.
+        // "2 distribusi berjalan" and "9 total" are both true, and neither
+        // tells an officer where to go. The number of neighbours still waiting
+        // for their zakat does.
         $mosque = $this->mosque();
+        $distribution = $this->distribution($mosque, 'pending');
 
-        $this->distribution($mosque, 'pending');
-        $this->distribution($mosque, 'pending');
-        $this->distribution($mosque, 'completed');
+        $this->recipient($distribution, 'distributed');
+        $this->recipient($distribution, 'pending');
+        $this->recipient($distribution, 'failed');
 
         Sanctum::actingAs($this->officer($mosque));
 
@@ -54,8 +57,7 @@ class MosqueSummaryTest extends TestCase
             'X-Organization-Id' => (string) $mosque->id,
         ])
             ->assertOk()
-            ->assertJsonPath('stats.distributions_open', 2)
-            ->assertJsonPath('stats.distributions_total', 3);
+            ->assertJsonPath('stats.recipients_pending', 2);
     }
 
     #[Test]
@@ -64,9 +66,9 @@ class MosqueSummaryTest extends TestCase
         $mine = $this->mosque();
         $theirs = $this->mosque();
 
-        $this->distribution($mine, 'pending');
-        $this->distribution($theirs, 'pending');
-        $this->distribution($theirs, 'pending');
+        $this->recipient($this->distribution($mine, 'pending'), 'pending');
+        $this->recipient($this->distribution($theirs, 'pending'), 'pending');
+        $this->recipient($this->distribution($theirs, 'pending'), 'pending');
 
         Sanctum::actingAs($this->officer($mine));
 
@@ -74,7 +76,7 @@ class MosqueSummaryTest extends TestCase
             'X-Organization-Id' => (string) $mine->id,
         ])
             ->assertOk()
-            ->assertJsonPath('stats.distributions_total', 1);
+            ->assertJsonPath('stats.recipients_pending', 1);
     }
 
     #[Test]
@@ -164,6 +166,15 @@ class MosqueSummaryTest extends TestCase
             'distribution_type_id' => $typeId,
             'year' => 2026,
             'title' => 'Distribusi Uji',
+            'status' => $status,
+        ]);
+    }
+
+    protected function recipient(Distribution $distribution, string $status): void
+    {
+        DistributionRecipient::forceCreate([
+            'distribution_id' => $distribution->id,
+            'recipient_name' => 'Warga ' . fake()->unique()->numerify('###'),
             'status' => $status,
         ]);
     }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\API\Home;
 
 use App\Http\Controllers\Controller;
 use App\Models\Distributions\Distribution;
+use App\Models\Distributions\DistributionRecipient;
 use App\Models\Organizations\OrganizationUser;
+use App\Models\Qurbans\QurbanProgram;
 use App\Services\Charities\CharityTransactionService;
 use App\Services\Menus\MenuContextResolver;
 use Illuminate\Http\JsonResponse;
@@ -62,12 +64,21 @@ class MosqueSummaryController extends Controller
                 'transactions_today' => (int) $recap['total_transactions'],
                 'rice_today' => (float) $recap['total_rice'],
 
-                // Open distributions are the actionable number: they are what
-                // an officer might have to go and do something about today.
-                'distributions_open' => (clone $distributions)
-                    ->whereNotIn('status', ['completed'])
+                // People, not programmes. "2 distribusi berjalan" and "9 total"
+                // are both true and neither tells an officer where to go; the
+                // number of neighbours still waiting for their zakat does.
+                'recipients_pending' => DistributionRecipient::query()
+                    ->whereIn('distribution_id', (clone $distributions)->pluck('id'))
+                    ->where('status', '!=', 'distributed')
                     ->count(),
-                'distributions_total' => (clone $distributions)->count(),
+
+                // Everything in the qurban module hangs off a programme, so
+                // this doubles as "is that tab worth opening".
+                'qurban_programs_open' => QurbanProgram::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('year', now()->year)
+                    ->where('status', 'open')
+                    ->count(),
 
                 'members' => OrganizationUser::query()
                     ->where('organization_id', $organization->id)

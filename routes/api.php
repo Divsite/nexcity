@@ -15,6 +15,7 @@ use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
+use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -98,6 +99,9 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // A year of distributions: the totals, and who is still owed.
         Route::get('distribution-summary', [DistributionSummaryController::class, 'index']);
+
+        // The mosque's own qurban season: programmes, quota left, livestock.
+        Route::get('qurban-overview', [QurbanOverviewController::class, 'index']);
 
         Route::get('charity-types', [QuickCharityController::class, 'types'])
             ->middleware('capability:browse-mosque-charity-transactions');
