@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Distributions\Distribution;
 use App\Models\Distributions\DistributionRecipient;
 use Illuminate\Http\JsonResponse;
+use App\Services\Menus\MenuContextResolver;
 use Illuminate\Http\Request;
 
 /**
@@ -23,7 +24,7 @@ class DistributionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $organizationId = (int) $request->attributes->get('active_organization_id');
+        $organizationId = $this->organizationId($request);
 
         $distributions = Distribution::query()
             ->where('organization_id', $organizationId)
@@ -60,7 +61,7 @@ class DistributionController extends Controller
      */
     public function recipients(Request $request, Distribution $distribution): JsonResponse
     {
-        $organizationId = (int) $request->attributes->get('active_organization_id');
+        $organizationId = $this->organizationId($request);
 
         if ((int) $distribution->organization_id !== $organizationId) {
             return response()->json(['message' => 'Distribusi ini bukan milik organisasi Anda.'], 403);
@@ -101,5 +102,30 @@ class DistributionController extends Controller
             ],
             'data' => $recipients,
         ]);
+    }
+
+    /**
+     * The organization this request is acting in.
+     *
+     * The header is authoritative when sent — `ResolveActiveOrganization` has
+     * already verified membership — but the mobile client does not send one, so
+     * falling back to the caller's own organization is what makes the endpoint
+     * work at all.
+     *
+     * Without the fallback this read `(int) null` = 0 and quietly filtered on
+     * `organization_id = 0`: no error, no distributions, and an empty screen
+     * that looked like an RT with nothing scheduled.
+     */
+    protected function organizationId(Request $request): int
+    {
+        $fromHeader = $request->attributes->get('active_organization_id');
+
+        if (is_int($fromHeader)) {
+            return $fromHeader;
+        }
+
+        [, $organization] = app(MenuContextResolver::class)->resolve($request->user());
+
+        return (int) ($organization?->id ?? 0);
     }
 }

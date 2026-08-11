@@ -107,6 +107,23 @@ class DistributionListTest extends TestCase
     }
 
     #[Test]
+    public function it_works_without_an_organization_header(): void
+    {
+        // The mobile client does not send X-Organization-Id. Reading the header
+        // alone gave `(int) null` = 0, so the query filtered on
+        // organization_id = 0 — no error, no rows, and a screen that looked
+        // like a mosque with nothing scheduled.
+        $mosque = $this->mosque();
+        $this->distribution($mosque, 'Zakat Kita');
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->getJson('/api/v1/distributions')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    #[Test]
     public function a_recipient_inherits_the_entitlement_of_their_golongan(): void
     {
         // 200 of 207 real rows leave the per-recipient amounts null and take
