@@ -1925,6 +1925,8 @@ return [
     'pending' => 'Belum bayar',
     'organization_not_found' => 'Organisasi tidak ditemukan.',
     'unknown' => 'Tidak diketahui',
+    'not_found' => 'Data tidak ditemukan.',
+    'forbidden' => 'Anda tidak berhak melakukan ini.',
 
     // Pengumuman
     'announcement_not_found' => 'Pengumuman tidak ditemukan.',

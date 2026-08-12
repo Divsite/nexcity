@@ -1901,6 +1901,8 @@ return [
     'pending' => 'Unpaid',
     'organization_not_found' => 'Organization not found.',
     'unknown' => 'Unknown',
+    'not_found' => 'Not found.',
+    'forbidden' => 'You are not allowed to do this.',
 
     // Pengumuman
     'announcement_not_found' => 'Announcement not found.',

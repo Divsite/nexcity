@@ -17,6 +17,7 @@ use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
+use App\Http\Controllers\API\Qurbans\QurbanPaymentController;
 use App\Http\Controllers\API\Qurbans\QurbanSlotController;
 use Illuminate\Support\Facades\Route;
 
@@ -111,6 +112,11 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // is decided inside the controller.
         Route::get('qurban-slots', [QurbanSlotController::class, 'index']);
         Route::post('qurban-slots', [QurbanSlotController::class, 'store']);
+
+        // Instalments against one line. Reading is open to the person who
+        // holds it as well as to pengurus; only a pengurus may record money.
+        Route::get('qurban-orders/{order}/payments', [QurbanPaymentController::class, 'index']);
+        Route::post('qurban-orders/{order}/payments', [QurbanPaymentController::class, 'store']);
 
         // Patungan: who holds a share, and taking one more at the counter.
         Route::get('qurban-participants', [QurbanParticipantController::class, 'index']);
