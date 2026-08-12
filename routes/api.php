@@ -17,6 +17,7 @@ use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
+use App\Http\Controllers\API\Qurbans\QurbanSlotController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -103,6 +104,13 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // The mosque's own qurban season: programmes, quota left, livestock.
         Route::get('qurban-overview', [QurbanOverviewController::class, 'index']);
+
+        // The patungan board — Sapi 1, Sapi 2, and who is on each line.
+        // No capability middleware: a warga reads this to decide which animal
+        // to join. Who may see a phone number, and who may name somebody else,
+        // is decided inside the controller.
+        Route::get('qurban-slots', [QurbanSlotController::class, 'index']);
+        Route::post('qurban-slots', [QurbanSlotController::class, 'store']);
 
         // Patungan: who holds a share, and taking one more at the counter.
         Route::get('qurban-participants', [QurbanParticipantController::class, 'index']);

@@ -40,12 +40,18 @@ class QurbanAnimal extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'share_slots' => 'integer',
         'weight' => 'decimal:2',
         'estimated_meat_weight' => 'decimal:2',
         'age_months' => 'integer',
         'purchase_price' => 'decimal:2',
         'purchase_date' => 'date',
     ];
+
+    public function program(): BelongsTo
+    {
+        return $this->belongsTo(QurbanProgram::class, 'qurban_program_id');
+    }
 
     public function organization(): BelongsTo
     {
