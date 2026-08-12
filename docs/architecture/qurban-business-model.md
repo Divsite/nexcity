@@ -51,6 +51,70 @@ katalog berarti memulai dari pertarungan harga yang tidak bisa dimenangkan.
 
 ---
 
+## Patungan itu papan isian, bukan keranjang belanja
+
+Rancangan pertama dokumen ini membayangkannya seperti belanja daring: pembeli
+mengambil N bagian lalu mengetik N nama. **Itu keliru**, dan cukup keliru untuk
+membuat layarnya salah bentuk.
+
+Yang terjadi di lapangan: takmir menulis judul dan tujuh baris di kertas, lalu
+mengajak orang mengisinya satu per satu.
+
+```
+Sapi 1  →  Abbas, RT Rouf, Mas Sodikin, Sukirno, Sukarmani, __, __
+Sapi 2  →  __, __, __, __, __, __, __
+Sapi 3  →  __, __, __, __, __, __, __
+```
+
+Sistem menggantikan **kertasnya**, bukan mengajaknya. Takmir tetap yang
+mengajak — itu peran sosial, dan tidak boleh diambil alih.
+
+Konsekuensinya:
+
+- **Warga tidak memilih siapa teman patungannya.** Ia memilih hewan, lalu
+  menaruh nama di baris kosong. Siapa yang duduk di baris lain adalah urusan
+  orang lain — dan bisa dilihat, karena itulah setengah alasan memilih satu
+  hewan ketimbang lainnya.
+- **Satu bagian, satu nama.** Yang mengambil dua baris — untuk dirinya dan
+  almarhum orang tuanya — mengisi dua nama, sekali bayar. Bukan "satu baris
+  dengan dua nama".
+- **"Sapi 1" ada sebagai gagasan sebelum ada sebagai hewan.** Papannya dibuka
+  sebelum sapinya dibeli; catatan hewan itu baru diisi nomor telinga, bobot,
+  dan foto ketika sapinya benar-benar datang.
+
+### Yang disederhanakan
+
+| Sekarang | Dengan sistem |
+|---|---|
+| Takmir mengajak satu-satu, mencatat di buku | Baris terisi sendiri, terlihat siapa saja |
+| "Sapi 1 sudah berapa orang?" — harus bertanya | Terlihat: 5 dari 7 |
+| Cicilan dicatat di kertas, gampang hilang | Tiap setoran tercatat, warga bisa lihat |
+| Yang belum lunas ditagih dari ingatan | Daftar yang kurang, otomatis |
+| "Sapi saya sudah dipotong?" — harus bertanya | Notifikasi + foto |
+
+### Cicilan tidak butuh tabel baru
+
+`qurban_order_payments` sudah menampung beberapa pembayaran terhadap satu
+pesanan, dan status pesanan sudah punya `partial_paid`. Jadi cicilan =
+beberapa baris setoran terhadap satu baris papan. Sebuah slot **dimulai belum
+lunas**, karena patungan memang dicicil berbulan-bulan — menandainya lunas di
+hari pengambilan akan membuat masjid memesan hewan dengan uang yang belum ada.
+
+`qurban_savings` baru diperlukan kalau nanti orang menabung **tanpa** tahu akan
+ikut hewan yang mana. Itu persoalan berbeda.
+
+### Siapa melihat apa
+
+| | Nama peserta | Nomor telepon |
+|---|---|---|
+| Warga | **Ya** — di masjid ini dibacakan | Tidak |
+| Pengurus | Ya | Ya |
+
+Tidak ada warga yang perlu mengumpulkan nomor telepon enam tetangganya dari
+sebuah layar.
+
+---
+
 ## Harga dipecah, tidak digabung
 
 Ini yang membunuh perang harga tanpa melarang apa pun.
@@ -71,9 +135,17 @@ Akibatnya membandingkan dua masjid berarti membandingkan **jasanya**: masjid
 mana yang memberi video penyembelihan, laporan penerima, kabar per tahap. Itu
 persaingan yang memperbaiki produk, bukan yang menjatuhkan harga.
 
-Konsekuensi teknis: `qurban_program_packages.price` perlu dipecah jadi
-`base_price` (dari vendor) dan `service_fee` (milik masjid). Total adalah
-turunan, bukan kolom.
+Konsekuensi teknis, **sudah dikerjakan**: `qurban_program_packages.price` dipecah
+jadi `base_price` (dari vendor) dan `service_fee` (milik masjid). Totalnya tetap
+disimpan sebagai kolom, dijaga sinkron oleh model saat menyimpan — kalau
+dihitung ulang tiap dibaca, setiap laporan dan ekspor akan menghitung sendiri
+dan salah satunya akan salah.
+
+Biaya koordinasi dibatasi **10% dari harga hewan**
+(`QurbanProgramPackage::MAX_SERVICE_FEE_RATIO`). Tanpa batas, sifat yang membuat
+pemecahan ini berguna justru berbalik: tidak ada yang bisa menurunkan harga
+hewan, jadi satu-satunya cara bersaing adalah jasa — dan satu-satunya cara untung
+adalah menaikkan biayanya.
 
 ---
 
