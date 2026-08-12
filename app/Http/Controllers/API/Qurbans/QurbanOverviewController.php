@@ -73,6 +73,13 @@ class QurbanOverviewController extends Controller
                     'animal_type' => $package->animal_type,
                     'package_type' => $package->package_type,
                     'share_count' => $package->share_count,
+
+                    // Split, never combined. The vendor's price is the same at
+                    // every mosque and the mosque's fee is its own line, so
+                    // comparing two mosques means comparing their service
+                    // rather than who undercut whom.
+                    'base_price' => (float) $package->base_price,
+                    'service_fee' => (float) $package->service_fee,
                     'price' => (float) $package->price,
                     'quota' => (int) $package->quota,
                     // What is left, not what was sold: an officer at a table

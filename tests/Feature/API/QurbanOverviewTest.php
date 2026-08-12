@@ -69,6 +69,66 @@ class QurbanOverviewTest extends TestCase
     }
 
     #[Test]
+    public function the_price_arrives_split_not_combined(): void
+    {
+        // The vendor's price is the same at every mosque and the mosque's fee
+        // is its own line. Combined, identical animals could only be told apart
+        // by who charged less — and mosques undercutting each other spends the
+        // trust that made them worth selling through.
+        $mosque = $this->mosque();
+        $program = $this->program($mosque);
+
+        $this->package($program, 'Patungan Sapi 1/7', quota: 7, remaining: 7);
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->getJson('/api/v1/qurban-overview')
+            ->assertOk()
+            ->assertJsonPath('programs.0.packages.0.base_price', 3000000)
+            ->assertJsonPath('programs.0.packages.0.service_fee', 200000)
+            ->assertJsonPath('programs.0.packages.0.price', 3200000);
+    }
+
+    #[Test]
+    public function the_total_is_kept_in_step_with_its_parts(): void
+    {
+        // Stored rather than derived on read, so reports and exports do not
+        // each re-implement the sum. Which means saving has to maintain it.
+        $mosque = $this->mosque();
+        $package = $this->package(
+            $this->program($mosque),
+            'Kambing',
+            quota: 10,
+            remaining: 10,
+        );
+
+        $package->service_fee = 300000;
+        $package->save();
+
+        $this->assertSame('3300000.00', $package->fresh()->price);
+    }
+
+    #[Test]
+    public function the_service_fee_has_a_ceiling(): void
+    {
+        // Nobody can undercut on the animal, so the only way to compete is on
+        // service — and the only way to profit is to charge more for it. Ten
+        // per cent covers the real costs with room to spare.
+        $package = $this->package(
+            $this->program($this->mosque()),
+            'Kambing',
+            quota: 10,
+            remaining: 10,
+        );
+
+        $this->assertSame(300000.0, $package->maxServiceFee());
+        $this->assertTrue($package->serviceFeeIsWithinCap());
+
+        $package->service_fee = 900000;
+        $this->assertFalse($package->serviceFeeIsWithinCap());
+    }
+
+    #[Test]
     public function inactive_packages_are_left_out(): void
     {
         $mosque = $this->mosque();
@@ -231,7 +291,8 @@ class QurbanOverviewTest extends TestCase
             'package_type' => 'share',
             'share_count' => 7,
             'title' => $title,
-            'price' => 3000000,
+            'base_price' => 3000000,
+            'service_fee' => 200000,
             'quota' => $quota,
             'remaining_quota' => $remaining,
             'is_active' => $active,
