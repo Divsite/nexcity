@@ -48,10 +48,16 @@ class QuickCharityController extends Controller
             ->where('organization_id', $organizationId)
             ->where('is_active', true)
             ->where('year', $year)
+            // How many rows each chip will actually show. Without it a filter
+            // reads as a label, and an officer cannot tell a type with three
+            // transactions from one with three hundred — nor whether a short
+            // list is the whole story or just the first page of it.
+            ->withCount(['transactions' => fn ($q) => $q->where('year', $year)])
             ->get()
             ->map(fn (CharityType $type) => [
                 'id' => $type->id,
                 'name' => $type->source?->name ?? 'Amal',
+                'transactions_count' => (int) $type->transactions_count,
                 'slug' => $type->source?->slug,
                 'min_amount' => $type->min_amount,
                 'max_amount' => $type->max_amount,
