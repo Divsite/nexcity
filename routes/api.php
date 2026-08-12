@@ -16,6 +16,7 @@ use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
+use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -102,6 +103,10 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // The mosque's own qurban season: programmes, quota left, livestock.
         Route::get('qurban-overview', [QurbanOverviewController::class, 'index']);
+
+        // Patungan: who holds a share, and taking one more at the counter.
+        Route::get('qurban-participants', [QurbanParticipantController::class, 'index']);
+        Route::post('qurban-participants', [QurbanParticipantController::class, 'store']);
 
         Route::get('charity-types', [QuickCharityController::class, 'types'])
             ->middleware('capability:browse-mosque-charity-transactions');
