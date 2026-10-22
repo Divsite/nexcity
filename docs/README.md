@@ -18,6 +18,8 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Scope produk qurban, alignment dengan Nexcity, dan pembagian V1/V2/V3.
 - `docs/architecture/qurban-domain-model.md`
   Desain domain, ERD konseptual, dan relasi antar entitas qurban.
+- `docs/modules/stats-summary.md`
+  Endpoint statistik agregat untuk Proof Register.
 - `docs/operations/seeders-and-demo-data.md`
   Seeder penting, akun default, dan urutan seed yang benar.
 - `docs/operations/qurban-implementation-roadmap.md`

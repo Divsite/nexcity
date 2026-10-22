@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
+use App\Http\Controllers\API\Stats\UsageSummaryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,6 +23,8 @@ Route::middleware(['openclaw.key'])->group(function () {
         Route::prefix('charity-transactions')->group(function () {
             Route::get('summary/daily', [CharitySummaryController::class, 'daily']);
         });
+
+        Route::get('stats/summary', UsageSummaryController::class);
     });
 });
 
