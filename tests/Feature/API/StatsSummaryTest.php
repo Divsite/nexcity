@@ -36,6 +36,22 @@ class StatsSummaryTest extends TestCase
         DB::table('user_resident_profiles')->insert(['user_id' => $userId, 'organization_id' => $organizationId, 'national_id_number' => '3201000000000001', 'is_head_family' => $headOfFamily, 'created_at' => now(), 'updated_at' => now()]);
     }
 
+    private function qurbanBatch(int $organizationId, int $year, string $status, array $couponStatuses, array $scans): void
+    {
+        $batchId = DB::table('qurban_distribution_batches')->insertGetId(['organization_id' => $organizationId, 'title' => 'Batch Rahasia', 'year' => $year, 'status' => $status, 'location_label' => 'Lokasi Rahasia', 'created_at' => now(), 'updated_at' => now()]);
+        $couponIds = [];
+        foreach ($couponStatuses as $couponStatus) {
+            $couponIds[] = DB::table('qurban_coupons')->insertGetId(['qurban_distribution_batch_id' => $batchId, 'coupon_code' => 'KODE-'.Str::random(8), 'status' => $couponStatus, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $minute = 0;
+        foreach ($scans as $result => $count) {
+            for ($i = 0; $i < $count; $i++) {
+                $minute++;
+                DB::table('qurban_coupon_claims')->insert(['qurban_distribution_batch_id' => $batchId, 'qurban_coupon_id' => $couponIds[0], 'scanned_code' => 'KODE-SCAN', 'scan_result' => $result, 'claimed_at' => $result === 'success' ? sprintf('2026-05-27 14:%02d:00', $minute) : null, 'scan_latitude' => -6.27, 'scan_longitude' => 106.7, 'scan_location_label' => 'Lokasi Rahasia', 'created_at' => sprintf('2026-05-27 14:%02d:30', $minute), 'updated_at' => now()]);
+            }
+        }
+    }
+
     private function seedUsage(): void
     {
         $demo = $this->organization(1, 'mosque');
@@ -60,6 +76,10 @@ class StatsSummaryTest extends TestCase
                 DB::table('distribution_recipients')->insert(['distribution_id' => $distributionId, 'recipient_name' => 'Penerima Rahasia', 'recipient_phone' => '081299999999', 'amount_money' => 500000, 'status' => $status, 'distributed_at' => $status === 'distributed' ? '2026-04-0'.($i + 1).' 07:00:00' : null, 'created_at' => now(), 'updated_at' => now()]);
             }
         }
+
+        $this->qurbanBatch($mosque, 2026, 'active', ['claimed', 'claimed', 'issued', 'cancelled'], ['success' => 2, 'already_claimed' => 3, 'invalid' => 1]);
+        $this->qurbanBatch($mosque, 2026, 'cancelled', ['claimed'], ['success' => 1]);
+        $this->qurbanBatch($demo, 2026, 'active', ['claimed', 'claimed'], ['success' => 2, 'already_claimed' => 4]);
 
         $this->resident($mosque, true);
         $this->resident($mosque, false);
@@ -89,7 +109,14 @@ class StatsSummaryTest extends TestCase
             ->assertJsonPath('distribution_recipients.distributed', 2)
             ->assertJsonPath('distribution_recipients.first_at', fn ($value) => str_starts_with($value, '2026-04-01T07:00:00'))
             ->assertJsonPath('distribution_recipients.last_at', fn ($value) => str_starts_with($value, '2026-04-02T07:00:00'))
-            ->assertJsonPath('residents', ['profiles' => 3, 'heads_of_family' => 2]);
+            ->assertJsonPath('residents', ['profiles' => 3, 'heads_of_family' => 2])
+            ->assertJsonPath('qurban.batches', 1)
+            ->assertJsonPath('qurban.coupons_issued', 3)
+            ->assertJsonPath('qurban.coupons_claimed', 2)
+            ->assertJsonPath('qurban.claimed_per_year', ['2026' => 2])
+            ->assertJsonPath('qurban.duplicate_scans_blocked', 3)
+            ->assertJsonPath('qurban.first_claimed_at', fn ($value) => str_starts_with($value, '2026-05-27T14:01:00'))
+            ->assertJsonPath('qurban.last_claimed_at', fn ($value) => str_starts_with($value, '2026-05-27T14:02:00'));
     }
 
     public function test_response_contains_no_personal_data_or_money(): void
@@ -98,7 +125,7 @@ class StatsSummaryTest extends TestCase
 
         $body = $this->getJson('/api/v1/stats/summary', ['X-Api-Key' => self::KEY])->assertOk()->getContent();
 
-        foreach (['Rahasia', '0812', '3201000000000001', '2500000', '500000', 'Organisasi', 'org-', 'total_money', 'amount_money', 'email'] as $private) {
+        foreach (['Rahasia', 'KODE', '106.7', '0812', '3201000000000001', '2500000', '500000', 'Organisasi', 'org-', 'total_money', 'amount_money', 'email'] as $private) {
             $this->assertStringNotContainsString($private, $body);
         }
     }
@@ -110,6 +137,7 @@ class StatsSummaryTest extends TestCase
             ->assertJsonPath('organizations', ['mosque' => 0, 'rt' => 0])
             ->assertJsonPath('charity_transactions', ['paid' => 0, 'first_at' => null, 'last_at' => null, 'per_year' => []])
             ->assertJsonPath('distribution_recipients', ['distributed' => 0, 'first_at' => null, 'last_at' => null])
-            ->assertJsonPath('residents', ['profiles' => 0, 'heads_of_family' => 0]);
+            ->assertJsonPath('residents', ['profiles' => 0, 'heads_of_family' => 0])
+            ->assertJsonPath('qurban', ['batches' => 0, 'coupons_issued' => 0, 'coupons_claimed' => 0, 'claimed_per_year' => [], 'duplicate_scans_blocked' => 0, 'first_claimed_at' => null, 'last_claimed_at' => null]);
     }
 }

@@ -24,6 +24,7 @@ class UsageStatsService
             'charity_transactions' => $this->charityTransactions($excluded),
             'distribution_recipients' => $this->distributionRecipients($excluded),
             'residents' => $this->residents($excluded),
+            'qurban' => $this->qurban($excluded),
         ];
     }
 
@@ -112,6 +113,46 @@ class UsageStatsService
         return [
             'profiles' => (int) $totals->profiles,
             'heads_of_family' => (int) $totals->heads_of_family,
+        ];
+    }
+
+    protected function qurban(array $excluded): array
+    {
+        $coupons = fn (): Builder => $this->forRealOrganizations(
+            DB::table('qurban_coupons')
+                ->join('qurban_distribution_batches', 'qurban_distribution_batches.id', '=', 'qurban_coupons.qurban_distribution_batch_id')
+                ->where('qurban_distribution_batches.status', '!=', 'cancelled')
+                ->where('qurban_coupons.status', '!=', 'cancelled'),
+            'qurban_distribution_batches.organization_id',
+            $excluded
+        );
+        $totals = $coupons()->selectRaw("COUNT(*) as issued, SUM(CASE WHEN qurban_coupons.status = 'claimed' THEN 1 ELSE 0 END) as claimed, COUNT(DISTINCT qurban_distribution_batches.id) as batches")->first();
+        $claimedPerYear = $coupons()
+            ->where('qurban_coupons.status', 'claimed')
+            ->selectRaw('qurban_distribution_batches.year as year, COUNT(*) as total')
+            ->groupBy('qurban_distribution_batches.year')
+            ->orderBy('qurban_distribution_batches.year')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->year === null ? 'unknown' : (string) $row->year => (int) $row->total])
+            ->all();
+
+        // Scans read from the claim log: successful claims date the distribution, rejected
+        // repeats show the QR check stopping double claims in the field.
+        $scans = $this->forRealOrganizations(
+            DB::table('qurban_coupon_claims')
+                ->join('qurban_distribution_batches', 'qurban_distribution_batches.id', '=', 'qurban_coupon_claims.qurban_distribution_batch_id'),
+            'qurban_distribution_batches.organization_id',
+            $excluded
+        )->selectRaw("SUM(CASE WHEN scan_result = 'already_claimed' THEN 1 ELSE 0 END) as duplicates, MIN(CASE WHEN scan_result = 'success' THEN COALESCE(claimed_at, qurban_coupon_claims.created_at) END) as first_at, MAX(CASE WHEN scan_result = 'success' THEN COALESCE(claimed_at, qurban_coupon_claims.created_at) END) as last_at")->first();
+
+        return [
+            'batches' => (int) $totals->batches,
+            'coupons_issued' => (int) $totals->issued,
+            'coupons_claimed' => (int) $totals->claimed,
+            'claimed_per_year' => $claimedPerYear,
+            'duplicate_scans_blocked' => (int) $scans->duplicates,
+            'first_claimed_at' => $this->iso($scans->first_at),
+            'last_claimed_at' => $this->iso($scans->last_at),
         ];
     }
 

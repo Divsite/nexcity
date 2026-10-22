@@ -4,7 +4,7 @@
 
 - Auth: middleware `openclaw.key`, header `X-Api-Key` atau `Authorization: Bearer`, memakai `OPENCLAW_API_KEY` yang sama dengan `summary/daily`.
 - Organisasi demo/seed dikeluarkan lewat `STATS_EXCLUDED_ORGANIZATION_IDS` (id dipisah koma). Setelah mengubahnya jalankan `php artisan config:cache` bila config di-cache.
-- Respons hanya berisi COUNT, MIN/MAX tanggal, dan jumlah per tahun. Tidak ada nama, kontak, NIK/KK, alamat, nama organisasi, atau nominal.
+- Respons hanya berisi COUNT, MIN/MAX tanggal, dan jumlah per tahun. Tidak ada nama, kontak, NIK/KK, alamat, nama organisasi, kode kupon, lokasi scan, atau nominal.
 
 | Field | Aturan |
 | --- | --- |
@@ -12,6 +12,7 @@
 | `charity_transactions` | `status = paid`, organisasi bukan demo; tanggal `created_at` (sama dengan rekap harian); `per_year` dari kolom `year`, `unknown` bila kosong |
 | `distribution_recipients` | `status = distributed`, organisasi distribusi bukan demo; tanggal `distributed_at` |
 | `residents` | `user_resident_profiles` organisasi bukan demo; `heads_of_family` = `is_head_family = 1` |
+| `qurban` | Batch qurban organisasi bukan demo dan tidak `cancelled`. `coupons_issued`: kupon selain `cancelled`; `coupons_claimed` dan `claimed_per_year` (tahun batch): kupon `claimed`; `duplicate_scans_blocked`: scan `already_claimed`; `first/last_claimed_at`: scan `success` (`claimed_at`, fallback `created_at`) |
 
 Riwayat (transaksi, distribusi, warga) ikut menghitung organisasi yang sudah tidak aktif, karena pemakaian lamanya tetap nyata. Baris tanpa organisasi tidak dihitung. Data aplikasi lama `mosque-management` (Yii2) tidak termasuk.
 
