@@ -14,7 +14,9 @@ use App\Models\Masters\ResidenceStatus;
 use App\Models\Organizations\Organization;
 use App\Models\Organizations\OrganizationUser;
 use App\Models\Users\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -26,10 +28,19 @@ class ResidentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:browse-rt-residents')->only('index');
-        $this->middleware('permission:add-residents|add-rt-residents')->only(['create', 'store']);
-        $this->middleware('permission:edit-residents|edit-rt-residents')->only(['edit', 'update']);
-        $this->middleware('permission:delete-residents|delete-rt-residents')->only('destroy');
+        // `capability:` reads the caller's level, not their Spatie role. A role
+        // check cannot separate a bendahara from a field officer, because every
+        // RT officer carries the same rt_admin role.
+        // See docs/operations/authorization-audit.md.
+        //
+        // The `add-residents` / `edit-residents` / `delete-residents`
+        // alternatives that used to sit here were never defined as permissions,
+        // so they could only ever have matched nothing.
+        $this->middleware('capability:browse-rt-residents')->only('index');
+        $this->middleware('capability:add-rt-residents')->only(['create', 'store']);
+        $this->middleware('capability:edit-rt-residents')->only(['edit', 'update']);
+        $this->middleware('capability:delete-rt-residents')->only('destroy');
+        $this->middleware('capability:browse-rt-residents')->only(['qrCard', 'qrCards']);
     }
 
     public function index(): View
@@ -388,6 +399,98 @@ class ResidentController extends Controller
         $slug = Str::slug($value, '');
 
         return strlen($slug) > 6 ? substr($slug, 0, 6) : $slug;
+    }
+
+    /**
+     * One resident's card, as a print-ready PDF.
+     */
+    public function qrCard(User $resident): Response
+    {
+        $this->authorizeResidentAccess($resident);
+
+        $resident->load(['residentProfile.neighborhoodAssociation', 'residentProfile.citizensAssociation']);
+        $profile = $resident->residentProfile;
+
+        abort_if(! $profile || ! $profile->qr_token, 404);
+
+        // CR80, the ID-card size — same as a KTP, so it fits an existing wallet
+        // or lanyard rather than needing something bought for it.
+        $pdf = Pdf::loadView('residents.qr-card', ['residents' => [$resident]])
+            ->setPaper([0, 0, 241.89, 153.07]);
+
+        return $pdf->stream("kartu-warga-{$resident->id}.pdf");
+    }
+
+    /**
+     * Every resident of the current RT, one card per page.
+     *
+     * Printing one at a time does not match how these are actually used: cards
+     * are handed out to a whole RT before a distribution, not individually.
+     */
+    public function qrCards(): Response
+    {
+        $organizationId = $this->partnerOrganizationId();
+
+        $residents = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'resident'))
+            ->whereHas('residentProfile', function ($query) use ($organizationId) {
+                $query->whereNotNull('qr_token');
+                if ($organizationId) {
+                    $query->where('organization_id', $organizationId);
+                }
+            })
+            ->with(['residentProfile.neighborhoodAssociation', 'residentProfile.citizensAssociation'])
+            ->orderBy('name')
+            ->get();
+
+        abort_if($residents->isEmpty(), 404, __('messages.no_residents_with_qr_token'));
+
+        $pdf = Pdf::loadView('residents.qr-card', ['residents' => $residents])
+            ->setPaper([0, 0, 241.89, 153.07]);
+
+        return $pdf->stream('kartu-warga.pdf');
+    }
+
+    /**
+     * A partner may only reach residents of the organization they belong to.
+     *
+     * The listing screen already scopes by organization, but a direct URL does
+     * not go through it — without this, guessing an id would print a card for
+     * someone in another RT.
+     */
+    protected function authorizeResidentAccess(User $resident): void
+    {
+        $organizationId = $this->partnerOrganizationId();
+
+        // Superadmin has no partner organization and is not scoped.
+        if (! $organizationId) {
+            return;
+        }
+
+        abort_if(
+            $resident->residentProfile?->organization_id !== $organizationId,
+            403,
+        );
+    }
+
+    /**
+     * The RT this user administers, or null for superadmin.
+     *
+     * Mirrors ResidentTable::partnerOrganizationId() so the listing and the
+     * print routes agree on who is visible.
+     */
+    protected function partnerOrganizationId(): ?int
+    {
+        $user = auth()->user();
+
+        if (! $user || $user->hasRole('superadmin')) {
+            return null;
+        }
+
+        return $user->organizationMemberships()
+            ->where('is_primary', true)
+            ->where('level_slug', 'like', 'rt-%')
+            ->first()?->organization_id;
     }
 
     public function destroy(User $resident): JsonResponse
