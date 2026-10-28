@@ -21,11 +21,11 @@ class CharityTransactionController extends Controller
         protected CharityTransactionService $transactionService,
         protected CharityDistributionService $distributionService
     ) {
-        $this->middleware('permission:browse-mosque-charity-transactions')->only(['index', 'dailyRecap', 'summary']);
-        $this->middleware('permission:add-mosque-charity-transactions')->only(['create', 'store']);
-        $this->middleware('permission:edit-mosque-charity-transactions')->only(['edit', 'update']);
-        $this->middleware('permission:delete-mosque-charity-transactions')->only('destroy');
-        $this->middleware('permission:print-mosque-charity-transactions')->only('invoice');
+        $this->middleware('capability:browse-mosque-charity-transactions')->only(['index', 'dailyRecap', 'summary']);
+        $this->middleware('capability:add-mosque-charity-transactions')->only(['create', 'store']);
+        $this->middleware('capability:edit-mosque-charity-transactions')->only(['edit', 'update']);
+        $this->middleware('capability:delete-mosque-charity-transactions')->only('destroy');
+        $this->middleware('capability:print-mosque-charity-transactions')->only('invoice');
     }
 
     public function index(): View

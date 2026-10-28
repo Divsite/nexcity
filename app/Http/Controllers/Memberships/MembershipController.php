@@ -9,7 +9,7 @@ class MembershipController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:browse-rt-membership');
+        $this->middleware('capability:browse-rt-membership');
     }
 
     public function index(): View

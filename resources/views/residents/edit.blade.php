@@ -8,7 +8,14 @@
             <div class="card">
                 <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">{{ __('messages.edit') }} {{ __('messages.resident') }}</h5>
-                    <a href="{{ route('residents.index') }}" class="btn btn-link">{{ __('messages.back') }}</a>
+                    <div class="d-flex gap-2 align-items-center">
+                        @if($resident->residentProfile?->qr_token)
+                            <a href="{{ route('residents.qr-card', $resident) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="ri-qr-code-line me-1"></i>{{ __('messages.print_qr_card') }}
+                            </a>
+                        @endif
+                        <a href="{{ route('residents.index') }}" class="btn btn-link">{{ __('messages.back') }}</a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <form autocomplete="off" novalidate>

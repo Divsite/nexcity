@@ -37,6 +37,11 @@ return [
         'sections' => [
             'population' => 'Population',
             'programs' => 'Programs',
+            'programs_security' => 'Security',
+            'programs_cleanliness' => 'Cleanliness',
+            'programs_social' => 'Social',
+            'programs_health' => 'Health',
+            'programs_finance' => 'Finance',
             'communication' => 'Communication',
             'organization' => 'Organization',
             'reports' => 'Reports',
@@ -50,6 +55,11 @@ return [
             'feedback' => 'Feedback & Complaints',
             'membership' => 'Membership',
             'reports' => 'RT Reports',
+            'security_watch' => 'Neighborhood Watch / Patrol',
+            'cleanliness' => 'Communal Cleanup',
+            'social_distribution' => 'Food / Aid Distribution',
+            'social_charity' => 'Community Assistance',
+            'health_posyandu' => 'Posyandu (Health Post)',
         ],
     ],
     'resident' => [

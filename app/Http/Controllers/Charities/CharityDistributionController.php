@@ -16,9 +16,9 @@ class CharityDistributionController extends Controller
 {
     public function __construct(protected CharityDistributionService $service)
     {
-        $this->middleware('permission:browse-mosque-charity-distributions')->only(['show', 'residents', 'summary', 'fundSources', 'form']);
-        $this->middleware('permission:add-mosque-charity-distributions')->only(['store']);
-        $this->middleware('permission:edit-mosque-charity-distributions')->only(['update', 'storeFundSource', 'deleteFundSource']);
+        $this->middleware('capability:browse-mosque-charity-distributions')->only(['show', 'residents', 'summary', 'fundSources', 'form']);
+        $this->middleware('capability:add-mosque-charity-distributions')->only(['store']);
+        $this->middleware('capability:edit-mosque-charity-distributions')->only(['update', 'storeFundSource', 'deleteFundSource']);
     }
 
     public function store(StoreDistributionRequest $request): JsonResponse

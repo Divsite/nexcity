@@ -25,10 +25,10 @@ class QurbanDistributionController extends Controller
 {
     public function __construct(protected QurbanDistributionService $service)
     {
-        $this->middleware('permission:browse-qurban')->only(['index', 'residents']);
-        $this->middleware('permission:add-qurban')->only(['storeBatch', 'updateBatch', 'storeCoupon', 'storeBulkCoupons']);
-        $this->middleware('permission:delete-qurban')->only('deleteBatch');
-        $this->middleware('permission:scan-qurban-coupon')->only('scanCoupon');
+        $this->middleware('capability:browse-qurban')->only(['index', 'residents']);
+        $this->middleware('capability:add-qurban')->only(['storeBatch', 'updateBatch', 'storeCoupon', 'storeBulkCoupons']);
+        $this->middleware('capability:delete-qurban')->only('deleteBatch');
+        $this->middleware('capability:scan-qurban-coupon')->only('scanCoupon');
     }
 
     public function index(Request $request): View
@@ -468,7 +468,7 @@ class QurbanDistributionController extends Controller
                 'id' => $member->user_id,
                 'name' => $member->user?->name,
                 'position' => $member->user?->mosqueProfile?->position
-                    ?? ($member->level_slug === 'mosque-officer' ? __('messages.zakat_officer') : null),
+                    ?? ($member->level_slug === 'mosque-zakat' ? __('messages.zakat_officer') : null),
             ])
             ->filter(fn ($item) => ! empty($item['id']))
             ->values();

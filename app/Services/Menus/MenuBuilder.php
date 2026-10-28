@@ -4,15 +4,18 @@ namespace App\Services\Menus;
 
 use App\Models\Menus\UserMenu;
 use App\Models\Organizations\Organization;
-use App\Models\Organizations\UserLevel;
-use App\Models\Organizations\UserLevelPermission;
 use App\Models\Users\User;
+use App\Services\Authorization\CapabilityResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class MenuBuilder
 {
     public const DEFAULT_SECTION = '__default__';
+
+    public function __construct(protected CapabilityResolver $capabilities)
+    {
+    }
 
     /**
      * Build menu collection for the given user/context.
@@ -49,8 +52,19 @@ class MenuBuilder
         $rules = $menu->visibility_rules ?? [];
 
         if (isset($rules['permissions'])) {
+            // One rule, one implementation: the same answer `capability:`
+            // middleware gives. Previously this was `can() || level`, and
+            // because every RT officer carries the same `rt_admin` role, that
+            // OR meant a level could never withhold anything — a bendahara saw
+            // Kependudukan and Keorganisasian in the sidebar, then hit a 403 on
+            // opening them. The menu described the role; the door obeyed the
+            // level.
             $allowed = collect((array) $rules['permissions'])
-                ->some(fn ($permission) => $user->can($permission) || $this->hasLevelPermission($user, $organization, $permission));
+                ->some(fn ($permission) => $this->capabilities->holds(
+                    $user,
+                    $permission,
+                    $organization?->id,
+                ));
 
             if (! $allowed) {
                 return false;
@@ -111,33 +125,4 @@ class MenuBuilder
         return true;
     }
 
-    protected function hasLevelPermission(User $user, ?Organization $organization, string $permission): bool
-    {
-        if (! $organization) {
-            return false;
-        }
-
-        $membership = $user->organizationMemberships()
-            ->where('organization_id', $organization->id)
-            ->whereNotNull('level_slug')
-            ->first();
-
-        if (! $membership) {
-            return false;
-        }
-
-        $level = UserLevel::query()
-            ->where('organization_id', $organization->id)
-            ->where('slug', $membership->level_slug)
-            ->first();
-
-        if (! $level) {
-            return false;
-        }
-
-        return UserLevelPermission::query()
-            ->where('user_level_id', $level->id)
-            ->where('permission_name', $permission)
-            ->exists();
-    }
 }
