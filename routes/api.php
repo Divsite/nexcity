@@ -20,6 +20,9 @@ use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
 use App\Http\Controllers\API\Qurbans\QurbanPaymentController;
 use App\Http\Controllers\API\Qurbans\QurbanSlotController;
+use App\Http\Controllers\API\Residents\MyProfileController;
+use App\Http\Controllers\API\Residents\RtCorrectionController;
+use App\Http\Controllers\API\Residents\RtResidentController;
 use App\Http\Controllers\API\Stats\UsageSummaryController;
 use Illuminate\Support\Facades\Route;
 
@@ -88,6 +91,20 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         Route::post('distribution-recipients/{recipient}/photos', [ScanController::class, 'attachPhoto'])
             ->middleware('capability:edit-mosque-charity-distributions|edit-rt-residents');
+
+        // "Data saya" — a warga reading their own resident record and asking
+        // the RT to correct it. Scoped to the caller; no id to tamper with.
+        Route::get('me/profile', [MyProfileController::class, 'show']);
+        Route::post('me/profile/corrections', [MyProfileController::class, 'storeCorrection'])
+            ->middleware('throttle:10,60');
+
+        // The RT's own warga, read-only, and the corrections they sent.
+        Route::get('rt/residents', [RtResidentController::class, 'index'])
+            ->middleware('capability:browse-rt-residents');
+        Route::get('rt/corrections', [RtCorrectionController::class, 'index'])
+            ->middleware('capability:browse-rt-residents');
+        Route::post('rt/corrections/{correction}/resolve', [RtCorrectionController::class, 'resolve'])
+            ->middleware('capability:edit-rt-residents');
 
         // Iuran — a resident reading their own dues. Scoped to the caller, so
         // there is no id here to tamper with.
