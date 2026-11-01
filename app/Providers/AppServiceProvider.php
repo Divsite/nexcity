@@ -6,6 +6,9 @@ use App\Models\Charities\CharityTransaction;
 use App\Models\Users\User;
 use App\Observers\CharityTransactionObserver;
 use App\Services\Authorization\CapabilityResolver;
+use App\Services\Otp\LogWhatsAppSender;
+use App\Services\Otp\OpenclawWhatsAppSender;
+use App\Services\Otp\WhatsAppSender;
 use App\Utilities\Themes\Theme;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
@@ -21,7 +24,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->bind(WhatsAppSender::class, fn () => match (config('services.whatsapp_otp.driver')) {
+            'openclaw' => new OpenclawWhatsAppSender(),
+            default => new LogWhatsAppSender(),
+        });
     }
 
     /**

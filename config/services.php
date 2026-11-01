@@ -43,6 +43,12 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI')
     ],
 
+    // Sign-in codes over WhatsApp: `log` (development only) or `openclaw`, which
+    // reuses the gateway configured below.
+    'whatsapp_otp' => [
+        'driver' => env('WHATSAPP_OTP_DRIVER', 'log'),
+    ],
+
     'openclaw' => [
         'api_key' => env('OPENCLAW_API_KEY'),
         'webhook_url' => env('OPENCLAW_WEBHOOK_URL'),

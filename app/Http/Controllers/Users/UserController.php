@@ -72,7 +72,7 @@ class UserController extends Controller
         $model->password = Hash::make($validated['password']);
 
         if ($validated['phone']) {
-            $model->phone = phone($validated['phone'], 'MY');
+            $model->phone = phone($validated['phone'], 'ID');
         }
 
         $model->assignRole($validated['role']);
@@ -236,7 +236,7 @@ class UserController extends Controller
         $model->initial_name = $validated['initial_name'];
 
         if ($validated['phone']) {
-            $model->phone = phone($validated['phone'], 'MY');
+            $model->phone = phone($validated['phone'], 'ID');
         }
 
         if ($validated['password']) {

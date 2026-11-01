@@ -21,6 +21,7 @@ use App\Models\Qurbans\QurbanProgram;
 use App\Models\Qurbans\QurbanWorkflowLog;
 use App\Notifications\Users\ResetPassword as ResetPasswordNotification;
 use App\Notifications\Users\VerifyEmail as VerifyEmailNotification;
+use App\Support\IndonesianPhone;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -51,6 +52,18 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected static function booted(): void
     {
+        // Every path that writes a phone — resident import, partner form,
+        // profile edit — goes through here, so the WhatsApp login can find it.
+        static::saving(function (User $user) {
+            if ($user->isDirty('phone')) {
+                // PartnerUserController assigns a PhoneNumber object, not a string.
+                $phone = $user->phone;
+                $user->phone_normalized = IndonesianPhone::normalize(
+                    $phone === null ? null : (string) $phone,
+                );
+            }
+        });
+
         static::deleted(function (User $user) {
             // Authentication Log
             $user->authentications()->delete();

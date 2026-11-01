@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Announcements\AnnouncementController;
 use App\Http\Controllers\API\Auth\AuthController;
+use App\Http\Controllers\API\Auth\OtpController;
 use App\Http\Controllers\API\Charities\AvailableYearsController;
 use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharityReportController;
@@ -34,6 +35,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('auth/login', [AuthController::class, 'login']);
+
+// Signing in with a WhatsApp code, for warga the RT already registered.
+Route::post('auth/otp/request', [OtpController::class, 'request'])->middleware('throttle:otp-request');
+Route::post('auth/otp/verify', [OtpController::class, 'verify'])->middleware('throttle:otp-verify');
 
 Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
