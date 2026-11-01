@@ -12,6 +12,7 @@ use App\Http\Controllers\API\Distributions\DistributionController;
 use App\Http\Controllers\API\Distributions\DistributionSummaryController;
 use App\Http\Controllers\API\Distributions\ScanController;
 use App\Http\Controllers\API\Dues\MyDuesController;
+use App\Http\Controllers\API\Dues\RtDuesController;
 use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
@@ -105,6 +106,17 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
             ->middleware('capability:browse-rt-residents');
         Route::post('rt/corrections/{correction}/resolve', [RtCorrectionController::class, 'resolve'])
             ->middleware('capability:edit-rt-residents');
+
+        // Iuran from the treasurer's side: who owes, and recording a payment.
+        // Setting up schemes and rates stays on the web.
+        Route::get('rt/dues', [RtDuesController::class, 'index'])
+            ->middleware('capability:browse-rt-dues');
+        Route::get('rt/dues/arrears', [RtDuesController::class, 'arrears'])
+            ->middleware('capability:browse-rt-dues');
+        Route::get('rt/dues/periods/{period}/bills', [RtDuesController::class, 'bills'])
+            ->middleware('capability:browse-rt-dues');
+        Route::patch('rt/dues/bills/{bill}', [RtDuesController::class, 'update'])
+            ->middleware('capability:edit-rt-dues');
 
         // Iuran — a resident reading their own dues. Scoped to the caller, so
         // there is no id here to tamper with.

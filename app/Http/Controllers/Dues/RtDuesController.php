@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dues;
 
 use App\Actions\Dues\OpenDuesScheme;
+use App\Actions\Dues\RecordDuesPayment;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dues\StoreDuesSchemeRequest;
 use App\Models\Dues\RtDuesBill;
@@ -184,7 +185,7 @@ class RtDuesController extends Controller
         return view('rt.dues.period', ['period' => $period->load('scheme')]);
     }
 
-    public function updateBill(Request $request, RtDuesBill $bill): RedirectResponse
+    public function updateBill(Request $request, RtDuesBill $bill, RecordDuesPayment $record): RedirectResponse
     {
         $this->authorizeOwnership($bill->period->organization_id);
 
@@ -194,17 +195,13 @@ class RtDuesController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $paid = $validated['status'] === RtDuesBill::STATUS_PAID;
-
-        $bill->update([
-            'status' => $validated['status'],
-            // Cleared when a bill moves back off "paid", so a correction does
-            // not leave a payment date on a bill nobody paid.
-            'paid_at' => $paid ? ($bill->paid_at ?? now()) : null,
-            'payment_method' => $paid ? ($validated['payment_method'] ?? 'cash') : null,
-            'note' => $validated['note'] ?? null,
-            'recorded_by' => $request->user()?->id,
-        ]);
+        $record->handle(
+            $bill,
+            $validated['status'],
+            $request->user(),
+            $validated['payment_method'] ?? null,
+            $validated['note'] ?? null,
+        );
 
         return back()->with('success', __('messages.updated_successfully'));
     }
