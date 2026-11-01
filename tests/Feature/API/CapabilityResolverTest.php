@@ -8,6 +8,7 @@ use App\Models\Organizations\UserLevel;
 use App\Models\Distributions\Distribution;
 use App\Models\Distributions\DistributionOfficer;
 use App\Models\Organizations\UserLevelPermission;
+use App\Models\Profiles\UserResidentProfile;
 use App\Models\Users\User;
 use App\Services\Authorization\CapabilityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,6 +114,36 @@ class CapabilityResolverTest extends TestCase
         // These belong to an organization context and must come from a level.
         $this->assertNotContains('browse-mosque-charity-transactions', $global);
         $this->assertNotContains('scan-qurban-coupon', $global);
+    }
+
+    #[Test]
+    public function an_officer_who_lives_in_the_rt_keeps_the_resident_portal(): void
+    {
+        // A ketua RT is staff of the RT and a warga of it too. Accounts carry
+        // one role, so their role is rt_admin; if the resident portal came only
+        // from the `resident` role, they could not open their own iuran.
+        $this->giveRole($this->makeUser(), 'resident', ['my-account', 'browse-resident-dues']);
+
+        $officer = $this->makeUser();
+        $this->giveRole($officer, 'rt_admin', ['my-account']);
+        UserResidentProfile::forceCreate(['user_id' => $officer->id]);
+
+        $global = $this->resolver->globalCapabilities($officer->fresh());
+
+        $this->assertContains('browse-resident-dues', $global);
+    }
+
+    #[Test]
+    public function an_officer_who_is_not_a_resident_gets_no_resident_portal(): void
+    {
+        $this->giveRole($this->makeUser(), 'resident', ['browse-resident-dues']);
+
+        $officer = $this->makeUser();
+        $this->giveRole($officer, 'mosque_admin', ['my-account']);
+
+        $global = $this->resolver->globalCapabilities($officer->fresh());
+
+        $this->assertNotContains('browse-resident-dues', $global);
     }
 
     #[Test]

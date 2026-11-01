@@ -7,6 +7,7 @@ use App\Models\Organizations\UserLevel;
 use App\Models\Organizations\UserLevelPermission;
 use App\Models\Users\User;
 use Illuminate\Support\Collection;
+use Spatie\Permission\Models\Role;
 
 /**
  * Resolves what a user may actually do, per organization.
@@ -53,11 +54,37 @@ class CapabilityResolver
     {
         return $user->getAllPermissions()
             ->pluck('name')
+            ->merge($this->residentPortal($user))
             ->reject(fn (string $name) => $this->isOrganizationScoped($name))
             ->unique()
             ->sort()
             ->values()
             ->all();
+    }
+
+    /**
+     * The resident portal, for anyone who is a warga.
+     *
+     * Being a warga is a fact about the person — they have a resident profile
+     * in an RT — not a role. An account carries one role, so a ketua RT holds
+     * `rt_admin`, and without this they could not open their own iuran or
+     * kartu warga. The `resident` role stays the single definition of what the
+     * portal contains; this only stops a second role from hiding it.
+     *
+     * @return list<string>
+     */
+    protected function residentPortal(User $user): array
+    {
+        if ($user->hasRole('resident') || ! $user->residentProfile()->exists()) {
+            return [];
+        }
+
+        return Role::query()
+            ->where('name', 'resident')
+            ->first()
+            ?->permissions
+            ->pluck('name')
+            ->all() ?? [];
     }
 
     /**
