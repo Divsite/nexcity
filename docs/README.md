@@ -2,6 +2,12 @@
 
 Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan gap yang masih perlu diselesaikan.
 
+## Mulai dari sini
+
+- `docs/architecture/system-map.md`
+  **Peta sistem**: backend, web, aplikasi, peran, data, dan rencana rilis 2027 — beserta keputusan
+  yang sudah diambil (satu aplikasi dengan pemilih mode) dan alasannya.
+
 ## Struktur
 
 - `docs/architecture/overview.md`
@@ -18,6 +24,8 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Scope produk qurban, alignment dengan Nexcity, dan pembagian V1/V2/V3.
 - `docs/architecture/qurban-domain-model.md`
   Desain domain, ERD konseptual, dan relasi antar entitas qurban.
+- `docs/modules/residents.md`
+  Data warga untuk aplikasi: daftar RT dengan tanda kelengkapan, "Data saya", koreksi dari warga.
 - `docs/modules/stats-summary.md`
   Endpoint statistik agregat untuk Proof Register.
 - `docs/operations/seeders-and-demo-data.md`
