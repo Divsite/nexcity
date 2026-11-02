@@ -40,23 +40,13 @@ class QurbanPaymentController extends Controller
 
         $order->loadMissing(['items', 'payments' => fn ($q) => $q->latest('paid_at')]);
 
-        $target = (float) $order->items->sum('subtotal');
-        $paid = (float) $order->payments
-            ->where('status', '!=', 'cancelled')
-            ->sum('amount');
-
         return response()->json([
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'customer_name' => $order->customer_name,
             'status' => $order->status,
 
-            'target' => $target,
-            'paid' => $paid,
-            // Never below zero. An overpayment is a bookkeeping matter, not a
-            // negative amount owed, and showing one would read as a refund due.
-            'remaining' => max(0.0, $target - $paid),
-            'is_settled' => $paid >= $target && $target > 0,
+            ...$order->paymentSummary(),
 
             'payments' => $order->payments->map(fn (QurbanOrderPayment $payment) => [
                 'id' => $payment->id,

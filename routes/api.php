@@ -18,6 +18,7 @@ use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Home\RtSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
+use App\Http\Controllers\API\Qurbans\MyQurbanController;
 use App\Http\Controllers\API\Qurbans\QurbanCouponScanController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
@@ -108,6 +109,9 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // "Hak saya": zakat/bansos the warga is listed for, and their qurban
         // meat coupons with the QR to show at pickup.
         Route::get('me/entitlements', [MyEntitlementsController::class, 'index']);
+
+        // "Qurban saya": the pekurban's own lines, payments, and animal stage.
+        Route::get('me/qurban', [MyQurbanController::class, 'index']);
 
         // Claiming a qurban coupon in the field: the scan is the claim.
         Route::post('qurban/coupons/scan', [QurbanCouponScanController::class, 'store'])
