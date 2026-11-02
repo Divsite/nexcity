@@ -418,7 +418,15 @@ class QurbanDistributionService
         });
     }
 
-    public function scanCoupon(string $code, ?int $scannerUserId = null, ?string $notes = null, array $scanContext = []): array
+    /**
+     * @param  int|null  $organizationId  the organization scanning. The web
+     *                                    leaves it null and the officer's
+     *                                    first mosque membership is used; the
+     *                                    API passes the active organization,
+     *                                    so an officer of two mosques scans
+     *                                    for the one they are standing in.
+     */
+    public function scanCoupon(string $code, ?int $scannerUserId = null, ?string $notes = null, array $scanContext = [], ?int $organizationId = null): array
     {
         $code = trim($code);
 
@@ -433,7 +441,7 @@ class QurbanDistributionService
             ];
         }
 
-        return DB::transaction(function () use ($code, $scannerUserId, $notes, $scanContext) {
+        return DB::transaction(function () use ($code, $scannerUserId, $notes, $scanContext, $organizationId) {
             $coupon = QurbanCoupon::query()
                 ->with(['batch', 'beneficiary'])
                 ->where(function (Builder $query) use ($code) {
@@ -454,8 +462,8 @@ class QurbanDistributionService
                 ];
             }
 
-            $context = $this->partnerContext();
-            if (! $context || (int) $coupon->batch->organization_id !== (int) ($context['organization_id'] ?? 0)) {
+            $scanningOrganizationId = $organizationId ?? ($this->partnerContext()['organization_id'] ?? null);
+            if (! $scanningOrganizationId || (int) $coupon->batch->organization_id !== (int) $scanningOrganizationId) {
                 $claim = $this->createClaim(null, QurbanCouponClaim::RESULT_INVALID, $scannerUserId, $notes, $code, $scanContext);
 
                 return [

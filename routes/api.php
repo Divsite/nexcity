@@ -18,10 +18,12 @@ use App\Http\Controllers\API\Home\MosqueSummaryController;
 use App\Http\Controllers\API\Home\RtSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
+use App\Http\Controllers\API\Qurbans\QurbanCouponScanController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
 use App\Http\Controllers\API\Qurbans\QurbanPaymentController;
 use App\Http\Controllers\API\Qurbans\QurbanSlotController;
+use App\Http\Controllers\API\Residents\MyEntitlementsController;
 use App\Http\Controllers\API\Residents\MyProfileController;
 use App\Http\Controllers\API\Residents\RtCorrectionController;
 use App\Http\Controllers\API\Residents\RtResidentController;
@@ -102,6 +104,14 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // "Data saya" — a warga reading their own resident record and asking
         // the RT to correct it. Scoped to the caller; no id to tamper with.
         Route::get('me/profile', [MyProfileController::class, 'show']);
+
+        // "Hak saya": zakat/bansos the warga is listed for, and their qurban
+        // meat coupons with the QR to show at pickup.
+        Route::get('me/entitlements', [MyEntitlementsController::class, 'index']);
+
+        // Claiming a qurban coupon in the field: the scan is the claim.
+        Route::post('qurban/coupons/scan', [QurbanCouponScanController::class, 'store'])
+            ->middleware('capability:scan-qurban-coupon');
         Route::post('me/profile/corrections', [MyProfileController::class, 'storeCorrection'])
             ->middleware('throttle:10,60');
 
