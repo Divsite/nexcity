@@ -15,6 +15,7 @@ use App\Http\Controllers\API\Dues\MyDuesController;
 use App\Http\Controllers\API\Dues\RtDuesController;
 use App\Http\Controllers\API\Home\HomeController;
 use App\Http\Controllers\API\Home\MosqueSummaryController;
+use App\Http\Controllers\API\Home\RtSummaryController;
 use App\Http\Controllers\API\Organizations\OrganizationController;
 use App\Http\Controllers\API\Organizations\OrganizationDetailController;
 use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
@@ -67,6 +68,11 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         // The mosque admin home. Guarded by any one of the officer
         // capabilities: the screen adapts to what the caller may see.
         Route::get('mosque/summary', [MosqueSummaryController::class, 'index']);
+
+        // The RT admin home. Any RT officer capability opens it; each section
+        // inside is gated on its own.
+        Route::get('rt/summary', [RtSummaryController::class, 'index'])
+            ->middleware('capability:browse-rt-residents|browse-rt-dues|scan-resident-qr');
         Route::get('organizations', [OrganizationController::class, 'index']);
         Route::get('organizations/{slug}', [OrganizationController::class, 'show']);
 
