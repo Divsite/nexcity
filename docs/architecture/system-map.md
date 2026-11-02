@@ -88,10 +88,12 @@ Malaysia). Pencocokan memakai `users.phone_normalized` (`App\Support\IndonesianP
   Ketua RT yang juga warga punya akun warga *dan* akun pengurus. Login WhatsApp menolak nomor yang
   dipakai dua akun (`409`). Perbaikannya: form "tambah pengurus" di web perlu bisa **memilih warga
   yang sudah ada** dan memberinya level, bukan membuat akun baru.
-- **Kata sandi bawaan.** Warga yang dibuat RT tanpa kata sandi mendapat `password`
-  (`ResidentController`), dan login API menerima nomor HP. Siapa pun yang tahu nomor seorang warga
-  bisa masuk ke akunnya. Setelah login WhatsApp berjalan di produksi, login kata sandi untuk akun
-  berkata sandi bawaan sebaiknya ditutup.
+- ~~**Kata sandi bawaan.**~~ Ditutup 2 November 2026. Warga baru tanpa kata sandi mendapat kata
+  sandi acak. Login dengan `password`/`passworrd` ditolak di aplikasi; di web warga ditolak dan
+  pengurus tertahan di halaman ganti kata sandi. `php artisan users:default-passwords` melaporkan
+  sisanya dan `--retire-warga` mengganti punya warga. Sisa risiko: siapa pun yang tahu kata sandi
+  bawaan seorang **pengurus** masih bisa masuk ke web dan menggantinya lebih dulu — sampai pengurus
+  itu menggantinya sendiri. Karena itu perintah tadi mendaftar mereka.
 
 ## 5. Data per domain
 
@@ -163,7 +165,7 @@ Mei 2027.
 ## 10. Pekerjaan terbuka yang menyangkut inti
 
 1. Tambah pengurus dari warga yang sudah ada (§4) — mencegah akun ganda
-2. Tutup login kata sandi bawaan (§4)
+2. ~~Tutup login kata sandi bawaan (§4)~~ — selesai; tinggal pengurus mengganti sendiri
 3. Antrean koreksi data warga di web (sekarang hanya di aplikasi)
 4. Uji kirim WhatsApp lewat OpenClaw ke nomor pribadi (`WHATSAPP_OTP_DRIVER=openclaw`): format
    tujuan `628…@s.whatsapp.net` belum pernah dicoba

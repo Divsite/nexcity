@@ -1883,4 +1883,7 @@ return [
     'dues_scheme_updated' => 'Kadar dikemas kini. :bills bil baharu dikeluarkan.',
     'dues_year_filter' => 'Tahun',
     'dues_all_years' => 'Semua tahun',
+    'default_password_use_whatsapp' => 'Akaun ini belum mempunyai kata laluan sendiri. Log masuk dalam aplikasi dengan kod WhatsApp ke nombor telefon yang direkodkan RT.',
+    'default_password_change_first' => 'Kata laluan anda masih kata laluan lalai. Tukar dahulu sebelum meneruskan.',
+    'default_password_not_allowed' => 'Itu kata laluan lalai. Pilih kata laluan lain.',
 ];

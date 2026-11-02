@@ -10,6 +10,7 @@ use App\Http\Requests\Profiles\UpdateProfileRequest;
 use App\Models\Users\User;
 use App\Notifications\Users\UserChangedEmail;
 use App\Notifications\Users\UserChangedPassword;
+use App\Support\DefaultPassword;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -113,6 +114,8 @@ class ProfileController extends Controller
         $user->password = Hash::make($validated['new_password']);
         $user->password_changed_at = now();
         $user->update();
+
+        $request->session()->forget(DefaultPassword::SESSION_KEY);
 
         $user->notify(new UserChangedPassword());
 

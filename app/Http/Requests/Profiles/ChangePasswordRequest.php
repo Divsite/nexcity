@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Profiles;
 
+use App\Support\DefaultPassword;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
@@ -53,6 +54,12 @@ class ChangePasswordRequest extends FormRequest
 
         $rules['new_password'][] = 'confirmed';
         $rules['new_password'][] = function (string $attribute, mixed $value, Closure $fail) {
+            if (DefaultPassword::is($value)) {
+                $fail(__('messages.default_password_not_allowed'));
+
+                return;
+            }
+
             if (Hash::check($value, auth()->user()->password)) {
                 $fail(__('messages.no_same_password_new_current'));
             }

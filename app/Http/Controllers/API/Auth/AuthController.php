@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\API\SessionResource;
 use App\Models\Users\User;
 use App\Services\Authorization\CapabilityResolver;
+use App\Support\DefaultPassword;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,18 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Nomor telepon atau password salah.'], 401);
+        }
+
+        // A password nobody chose is no lock at all: the login accepts a phone
+        // number, and the default is the same for everyone. Refused here even
+        // for staff, because the app has no way to force a change — the web
+        // does, so that is where a pengurus sets theirs.
+        if (DefaultPassword::is($request->password)) {
+            return response()->json([
+                'message' => DefaultPassword::belongsToWargaOnly($user)
+                    ? 'Akun ini belum punya kata sandi sendiri. Masuk lewat WhatsApp dengan nomor HP yang tercatat di RT.'
+                    : 'Kata sandi Anda masih kata sandi bawaan. Ganti dulu lewat web, lalu masuk lagi di sini.',
+            ], 422);
         }
 
         $token = $user->createToken('mobile-app')->plainTextToken;

@@ -87,7 +87,10 @@ class ResidentController extends Controller
                     'username' => $username,
                     'phone' => $data['phone'] ?? null,
                     'email_verified_at' => now(),
-                    'password' => Hash::make($data['password'] ?? 'password'),
+                    // No password given means a random one nobody knows: the warga
+                    // signs in with a WhatsApp code. It used to be `password`,
+                    // which with a phone number as the login let anyone in.
+                    'password' => Hash::make($data['password'] ?? Str::random(40)),
                     'initial_name' => User::AVATAR_INITIAL_NAME,
                     'avatar' => null,
                 ]);

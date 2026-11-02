@@ -1969,4 +1969,7 @@ return [
     'dues_scheme_updated' => 'Tarif diperbarui. :bills tagihan baru diterbitkan.',
     'dues_year_filter' => 'Tahun',
     'dues_all_years' => 'Semua tahun',
+    'default_password_use_whatsapp' => 'Akun ini belum punya kata sandi sendiri. Masuk lewat aplikasi dengan kode WhatsApp ke nomor HP yang tercatat di RT.',
+    'default_password_change_first' => 'Kata sandi Anda masih kata sandi bawaan. Ganti dulu sebelum melanjutkan.',
+    'default_password_not_allowed' => 'Kata sandi ini adalah kata sandi bawaan. Pilih kata sandi lain.',
 ];

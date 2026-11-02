@@ -1945,4 +1945,7 @@ return [
     'dues_scheme_updated' => 'Rates updated. :bills new bills issued.',
     'dues_year_filter' => 'Year',
     'dues_all_years' => 'All years',
+    'default_password_use_whatsapp' => 'This account has no password of its own yet. Sign in in the app with a WhatsApp code sent to the number your RT recorded.',
+    'default_password_change_first' => 'You are still using the default password. Change it before continuing.',
+    'default_password_not_allowed' => 'That is a default password. Choose another one.',
 ];

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Users\User;
 use App\Providers\RouteServiceProvider;
+use App\Support\DefaultPassword;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -73,6 +74,26 @@ class LoginController extends Controller
         }
 
         if ($this->attemptLogin($request)) {
+            if (DefaultPassword::is($request->input('password'))) {
+                $signedIn = $this->guard()->user();
+
+                // A warga signs in with a WhatsApp code instead; there is
+                // nothing a default password lets them do that a code does
+                // not, and it lets anyone else in.
+                if (DefaultPassword::belongsToWargaOnly($signedIn)) {
+                    $this->guard()->logout();
+
+                    throw ValidationException::withMessages([
+                        $this->username() => [trans('messages.default_password_use_whatsapp')],
+                    ]);
+                }
+
+                // A pengurus keeps their account, but nothing opens until the
+                // password is theirs. EnsureProfileIsCompleted holds them on
+                // the change-password page.
+                $request->session()->put(DefaultPassword::SESSION_KEY, true);
+            }
+
             if ($request->hasSession()) {
                 $request->session()->put('auth.password_confirmed_at', time());
 
@@ -95,7 +116,11 @@ class LoginController extends Controller
     protected function authenticated(Request $request, $user)
     {
         // Redirect
-        return response()->json(['success' => true, 'redirect' => route('dashboard')]);
+        $to = $request->session()->get(DefaultPassword::SESSION_KEY)
+            ? route('profile.change-password-form')
+            : route('dashboard');
+
+        return response()->json(['success' => true, 'redirect' => $to]);
     }
 
     /**
