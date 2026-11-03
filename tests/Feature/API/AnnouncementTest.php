@@ -178,14 +178,19 @@ class AnnouncementTest extends TestCase
 
         Sanctum::actingAs($wargaA);
 
-        // Unasked, the feed stays the warga's own.
-        $this->getJson('/api/v1/announcements')->assertOk()->assertJsonCount(0, 'data');
-
-        $this->getJson('/api/v1/announcements?area=village')
+        // Sekelurahan is the default: unasked, the neighbouring RT's open
+        // event arrives; its iuran notice does not.
+        $this->getJson('/api/v1/announcements')
             ->assertOk()
             ->assertJsonPath('area', 'village')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.title', 'Kerja bakti terbuka');
+
+        // `own` narrows back to the warga's own organizations.
+        $this->getJson('/api/v1/announcements?area=own')
+            ->assertOk()
+            ->assertJsonPath('area', null)
+            ->assertJsonCount(0, 'data');
     }
 
     #[Test]

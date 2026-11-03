@@ -27,9 +27,8 @@ use Illuminate\Validation\Rule;
  * it when they open the organization — there is no "follow" in this product,
  * and without one an open feed would fill with strangers' notices.
  *
- * The one widening the warga asks for themselves is `area`: public notices
- * from organizations in the same kelurahan, kecamatan, kota or provinsi as
- * where they live. The location is stored as five separate fields on both the
+ * The one widening is `area`: public notices from organizations in the same
+ * kelurahan (the default), kecamatan, kota or provinsi as where they live. The location is stored as five separate fields on both the
  * warga and the organization precisely so it can be matched one level at a
  * time.
  */
@@ -43,12 +42,16 @@ class AnnouncementController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $validated = $request->validate([
-            'area' => ['nullable', Rule::in(array_keys(self::AREAS))],
+            'area' => ['nullable', Rule::in([...array_keys(self::AREAS), 'own'])],
         ]);
 
         [$memberIds, $staffIds] = $this->organizationIds($request);
 
-        $area = $validated['area'] ?? null;
+        // Sekelurahan by default (ruled 3 November 2026): a neighbouring
+        // RT's open event or the mosque down the road reaches the warga
+        // without asking. `own` narrows back to their own organizations.
+        $area = $validated['area'] ?? self::DEFAULT_AREA;
+        $area = $area === 'own' ? null : $area;
         $place = $area ? $this->placeOf($request->user()->id, self::AREAS[$area]) : null;
 
         $announcements = Announcement::query()
@@ -79,6 +82,8 @@ class AnnouncementController extends Controller
             'area' => $place !== null ? $area : null,
         ]);
     }
+
+    public const DEFAULT_AREA = 'village';
 
     /** `area` → the location column it matches, warga and organization alike. */
     protected const AREAS = [

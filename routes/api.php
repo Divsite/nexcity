@@ -8,6 +8,7 @@ use App\Http\Controllers\API\Charities\AvailableYearsController;
 use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharityReportController;
 use App\Http\Controllers\API\Charities\MyCharityController;
+use App\Http\Controllers\API\Charities\PublicCharityReportController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
 use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
@@ -208,5 +209,9 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
         Route::get('announcements', [AnnouncementController::class, 'index']);
         Route::get('announcements/{announcement}', [AnnouncementController::class, 'show']);
         Route::get('organizations/{slug}/announcements', [AnnouncementController::class, 'forOrganization']);
+
+        // A mosque's charity in the open: totals in, by type, and out. No
+        // capability: transparency is for the jamaah, not the pengurus.
+        Route::get('organizations/{slug}/charity-report', [PublicCharityReportController::class, 'show']);
     });
 });

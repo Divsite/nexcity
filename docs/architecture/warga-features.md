@@ -33,7 +33,8 @@ tingkat**: sekelurahan, sekecamatan, sekota, seprovinsi.
 
 **Sudah dipakai:** feed pengumuman `GET /api/v1/announcements?area=village|district|city|province`
 menambahkan pengumuman **umum** dari organisasi yang lokasinya sama dengan warga pada tingkat itu.
-Lokasi warga diambil dari data warganya; kalau kosong, dari RT-nya.
+**Bawaannya sekelurahan** (diputuskan 3 November 2026); `area=own` mempersempit ke organisasi warga
+sendiri. Lokasi warga diambil dari data warganya; kalau kosong, dari RT-nya.
 
 **Belum dipakai:** Temukan (cari masjid/RT/program) belum disaring per wilayah. Urutan menurut jarak
 GPS adalah keputusan lain (butuh izin lokasi) dan belum diambil.
@@ -51,7 +52,8 @@ GPS adalah keputusan lain (butuh izin lokasi) dan belum diambil.
 - **Boleh dibaca tidak sama dengan dikirim.** Pengumuman umum tidak masuk sendiri ke feed orang
   asing. Pengumuman umum tampil:
   - di halaman organisasinya, untuk siapa pun;
-  - di feed warga yang memilih wilayah (`area`) yang mencakup organisasi itu.
+  - di feed warga **sekelurahan**, otomatis;
+  - di feed warga yang memilih wilayah lebih luas (`area`).
 - Ditolak dengan 404, bukan 403, supaya tidak bocor bahwa RT sedang mengumumkan sesuatu.
 
 ## 4. Peta fitur warga
@@ -119,17 +121,17 @@ Rencana ke depan yang sengaja dibuat sebagai menu kosong (`UserMenuSeeder`,
 | RT | Laporan RT | `rt-reports` | Tidak; untuk pengurus |
 | Masjid | Inventaris | `mosque-inventory` | Tidak; untuk pengurus |
 | Masjid | CRM & Donatur | `mosque-crm` | Riwayat donasi (sebagian lewat Riwayat amal) |
-| Masjid | Laporan Amal / Distribusi | `mosque-report-*` | Tidak; transparansi publik bisa jadi fitur nanti |
+| Masjid | Laporan Amal / Distribusi | `mosque-report-*` | Ringkasan terbuka: `GET /v1/organizations/{slug}/charity-report` (total per jenis + yang disalurkan, tanpa nama) |
 | Portal warga | Iuran | `resident-dues` | ✅ di aplikasi |
 | Portal warga | Informasi | `resident-information` | Pengumuman |
 | Portal warga | Keluhan | `resident-complaints` | = Kritik & Saran RT |
 | Portal warga | Acara | `resident-events` | = Kegiatan RT |
 
-## 6. Yang masih perlu diputuskan
+## 6. Keputusan 3 November 2026
 
-1. **Area bawaan feed.** Sekarang feed hanya berisi organisasi warga sendiri sampai warga memilih
-   wilayah. Perlu diputuskan apakah "sekelurahan" ikut tampil otomatis.
-2. **Kegiatan RT**: cukup sebagai pengumuman yang memuat waktu dan tempat, atau perlu fitur
-   tersendiri dengan konfirmasi hadir?
-3. **Arisan**: dimodelkan sebagai undian bergilir, atau cukup setorannya saja?
-4. **Transparansi masjid**: apakah laporan amal ringkas boleh dibuka untuk umum?
+| Hal | Keputusan |
+|---|---|
+| Pengumuman umum sekelurahan | **Tampil otomatis** di feed warga |
+| Kegiatan RT | **Cukup sebagai pengumuman** (dengan waktu & tempat) dulu; belum ada fitur konfirmasi hadir |
+| Laporan amal masjid untuk umum | **Boleh.** Hanya total: per jenis amal dan yang disalurkan. Tanpa nama pembayar atau penerima. Jenis dengan kurang dari 3 pembayaran tidak dirinci, supaya totalnya tidak bisa dibaca sebagai sumbangan satu orang. Masjid saja; uang RT tetap internal |
+| Arisan | **Ditahan**, bukan prioritas |
