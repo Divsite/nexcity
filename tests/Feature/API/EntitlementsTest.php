@@ -125,6 +125,34 @@ class EntitlementsTest extends TestCase
     }
 
     #[Test]
+    public function a_warga_listed_at_two_mosques_collects_at_both(): void
+    {
+        // The rule as the product owner set it: a right at Masjid A does not
+        // open Masjid B — but listed at both, the warga collects at both.
+        $a = $this->mosque();
+        $b = $this->mosque();
+        $citra = $this->resident('Citra');
+        $this->coupon($a, $citra, 'Q26AAR00200001');
+        $this->coupon($b, $citra, 'Q26BBR00200001');
+
+        Sanctum::actingAs($citra);
+        $this->getJson('/api/v1/me/entitlements')
+            ->assertOk()
+            ->assertJsonCount(2, 'qurban_coupons');
+
+        $this->actingAsOfficer($a, ['scan-qurban-coupon']);
+        $this->postJson('/api/v1/qurban/coupons/scan', ['code' => 'Q26AAR00200001'], $this->in($a))
+            ->assertJsonPath('result', 'success');
+        // B's coupon is still B's, even in the hands of A's officer.
+        $this->postJson('/api/v1/qurban/coupons/scan', ['code' => 'Q26BBR00200001'], $this->in($a))
+            ->assertJsonPath('result', 'invalid');
+
+        $this->actingAsOfficer($b, ['scan-qurban-coupon']);
+        $this->postJson('/api/v1/qurban/coupons/scan', ['code' => 'Q26BBR00200001'], $this->in($b))
+            ->assertJsonPath('result', 'success');
+    }
+
+    #[Test]
     public function it_claims_for_the_mosque_being_worked_in_not_the_first_one(): void
     {
         // An officer of two mosques, standing in the second: the web would

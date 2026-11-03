@@ -110,6 +110,42 @@ Malaysia). Pencocokan memakai `users.phone_normalized` (`App\Support\IndonesianP
 
 ## 6. Kaitan RT ↔ warga ↔ masjid
 
+### Warga adalah pusat
+
+Ditegaskan pemilik produk, 3 November 2026. Semua yang dilihat seseorang di sisi warga berpusat pada
+**satu akun warga**. Tidak ada role "pekurban", "muzakki", atau "penerima". Itu **peristiwa** yang
+terjadi pada akun warga (dia ikut patungan, dia membayar zakat, dia terdaftar sebagai penerima),
+bukan jenis akun.
+
+Aplikasi warga berisi dua jenis informasi yang tercampur di satu tempat:
+
+| | Informasi umum | Informasi pribadi |
+|---|---|---|
+| Isinya | Setiap masjid: profil, program, papan patungan qurban, pengumuman terbuka | Iuran RT-nya, data dirinya, kartu QR, "Qurban saya", "Riwayat amal", "Hak saya" |
+| Ditentukan oleh | Tidak ada. Warga **bebas memilih** masjid mana untuk amal, qurban, zakat | **Siapa dia**: RT tempat dia terdaftar, dan apa yang tercatat atas akunnya |
+| Batas | Satu masjid tidak melihat apa yang warga lakukan di masjid lain | Tampil otomatis, tanpa memilih organisasi |
+
+Aturan per domain:
+
+| Domain | Aturannya | Di kode |
+|---|---|---|
+| Iuran RT | Hanya RT tempat warga terdaftar (`user_resident_profiles`). Satu RT bisa punya beberapa pungutan sekaligus (iuran bulanan, HUT RI, pengajian, dll) sebagai **skema** terpisah | `rt_dues_schemes`, `GET /v1/me/dues` |
+| Amal / zakat | Di masjid mana saja. Tercatat ke akun hanya kalau pengurus menautkannya di loket ("Akun warga") | `charity_transactions.payer_user_id`, `GET /v1/me/charity` |
+| Patungan qurban | Di masjid mana saja; satu warga boleh ikut di beberapa masjid | `qurban_orders.user_id`, `GET /v1/me/qurban` |
+| Kupon daging | **Per masjid.** Kupon dari Masjid A hanya bisa dipindai di Masjid A. Kalau warga terdaftar sebagai penerima di A **dan** B, dia punya dua kupon dan boleh mengambil di keduanya. Hak di satu masjid tidak membuka hak di masjid lain | `QurbanDistributionService::scanCoupon` menolak kupon dari organisasi lain sebagai `invalid`; `EntitlementsTest` |
+| Zakat / bansos | Per distribusi; diambil dengan kartu warga di organisasi yang mendaftarkannya | `ScanResolver` |
+
+**Tidak semua pekurban atau penerima punya akun warga.** Orang dari luar daerah bisa ikut patungan,
+dan penerima daging bisa dicatat manual (prinsip di [../modules/qurban.md](../modules/qurban.md)).
+Pengurus tetap bisa mencatat mereka dengan nama saja. Yang tidak punya akun tidak melihat apa pun di
+aplikasi sampai **daftar terbuka** (§8) ada: akun tingkat 1 tanpa RT, yang bisa ikut patungan dan
+amal tetapi tidak punya informasi pribadi RT.
+
+Belum dimodelkan: **arisan**. Arisan adalah undian bergilir, bukan tagihan. Kalau dicatat sebagai
+skema iuran, hanya setorannya yang tercatat, tidak dengan giliran siapa yang menerima.
+
+### Alur data
+
 ```
 RT mendata warga (web) ──► data warga: KK, alamat, HP, kartu QR
                               │
