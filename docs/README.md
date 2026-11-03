@@ -5,9 +5,10 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
 ## Mulai dari sini
 
 - `docs/architecture/system-map.md`
-- `docs/architecture/warga-features.md` — peta fitur warga: internal/eksternal, siapa melihat apa, lokasi per tingkat, menu placeholder
   **Peta sistem**: backend, web, aplikasi, peran, data, dan rencana rilis 2027 — beserta keputusan
   yang sudah diambil (satu aplikasi dengan pemilih mode) dan alasannya.
+- `docs/architecture/warga-features.md`
+  **Peta fitur warga**: internal/eksternal, siapa melihat apa, lokasi per tingkat, menu placeholder.
 
 ## Struktur
 
