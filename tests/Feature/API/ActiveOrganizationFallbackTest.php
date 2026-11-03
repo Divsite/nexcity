@@ -188,12 +188,15 @@ class ActiveOrganizationFallbackTest extends TestCase
 
     protected function charityType(Organization $mosque, string $name): int
     {
-        $sourceId = DB::table('m_charity_type_sources')->insertGetId([
-            'name' => $name,
-            'slug' => Str::slug($name) . '-' . fake()->unique()->numerify('###'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // The real slug: it decides which receipt table holds the amount.
+        $slug = Str::slug($name);
+        $sourceId = DB::table('m_charity_type_sources')->where('slug', $slug)->value('id')
+            ?? DB::table('m_charity_type_sources')->insertGetId([
+                'name' => $name,
+                'slug' => $slug,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
         return DB::table('charity_types')->insertGetId([
             'organization_id' => $mosque->id,

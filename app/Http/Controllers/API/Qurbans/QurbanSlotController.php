@@ -10,6 +10,7 @@ use App\Models\Qurbans\QurbanOrderItem;
 use App\Models\Qurbans\QurbanProgram;
 use App\Models\Qurbans\QurbanProgramPackage;
 use App\Services\Authorization\CapabilityResolver;
+use App\Support\AccountRef;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -179,6 +180,8 @@ class QurbanSlotController extends Controller
             'phone' => ['nullable', 'string', 'max:32'],
             'is_paid' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
+            // Pengurus only: the account of the person whose line this is.
+            'owner_ref' => ['nullable', 'string', 'max:1024'],
         ]);
 
         $animal = QurbanAnimal::with('program.packages')->find($validated['animal_id']);
@@ -198,6 +201,16 @@ class QurbanSlotController extends Controller
         // differs is only who is allowed to name somebody else.
         $names = array_values($validated['names']);
 
+        // Who the line belongs to. A warga's own line is always theirs. A line
+        // a pengurus fills is nobody's unless they looked the person up —
+        // including the pengurus's own, which is now theirs only if they say
+        // so, rather than silently nobody's.
+        $owner = match (true) {
+            ! $isStaff => $user,
+            filled($validated['owner_ref'] ?? null) => AccountRef::resolve($validated['owner_ref'], $organizationId, 'owner_ref'),
+            default => null,
+        };
+
         $package = $animal->program?->packages->firstWhere('is_active', true)
             ?? $animal->program?->packages->first();
 
@@ -207,7 +220,7 @@ class QurbanSlotController extends Controller
             ]);
         }
 
-        $order = DB::transaction(function () use ($animal, $names, $validated, $package, $organizationId, $user, $isStaff) {
+        $order = DB::transaction(function () use ($animal, $names, $validated, $package, $organizationId, $user, $isStaff, $owner) {
             // Locked for the length of the write. Two people tapping "ambil
             // bagian" at the same second would otherwise both be handed line
             // six, and one of them would silently lose their place.
@@ -235,9 +248,9 @@ class QurbanSlotController extends Controller
             $order = QurbanOrder::create([
                 'organization_id' => $organizationId,
                 'qurban_program_id' => $animal->qurban_program_id,
-                'user_id' => $isStaff ? null : $user->id,
+                'user_id' => $owner?->id,
                 'customer_name' => $names[0],
-                'customer_phone' => $validated['phone'] ?? null,
+                'customer_phone' => $validated['phone'] ?? $owner?->phone_normalized,
                 'source_type' => $isStaff ? 'counter' : 'app',
                 'order_code' => 'QRB-' . strtoupper(Str::random(8)),
                 // Unpaid by default. Patungan is normally paid off in

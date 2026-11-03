@@ -75,6 +75,60 @@ class QuickCharityTest extends TestCase
     }
 
     #[Test]
+    public function the_amount_is_kept_where_the_ledger_reads_it(): void
+    {
+        $mosque = $this->mosque();
+        $fitrah = $this->charityType($mosque);
+        $infaq = $this->charityType($mosque, isRice: false, slug: 'infaq', name: 'Infaq');
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->postJson('/api/v1/charity-transactions', [
+            'charity_type_id' => $fitrah->id,
+            'payer_name' => 'Pak Budi',
+            'total_rice' => 2.5,
+            'payment_method' => 'cash',
+        ], $this->header($mosque))->assertCreated();
+
+        $this->postJson('/api/v1/charity-transactions', [
+            'charity_type_id' => $infaq->id,
+            'payer_name' => 'Bu Sari',
+            'total_money' => 75000,
+            'payment_method' => 'qris',
+            'notes' => 'Kotak Jumat',
+        ], $this->header($mosque))->assertCreated();
+
+        // The Amal tab and the web recap read amounts from the receipts. A
+        // transaction row saved without one shows as Rp 0 everywhere.
+        $this->assertDatabaseHas('charity_fitrah_receipts', ['is_rice' => true, 'amount_rice' => 2.5]);
+        $this->assertDatabaseHas('charity_donation_receipts', ['amount_money' => 75000, 'notes' => 'Kotak Jumat']);
+
+        $this->getJson('/api/v1/charity-transactions', $this->header($mosque))
+            ->assertOk()
+            ->assertJsonFragment(['money' => 75000.0]);
+    }
+
+    #[Test]
+    public function a_type_with_no_receipt_is_sent_to_the_web(): void
+    {
+        $mosque = $this->mosque();
+        $type = $this->charityType($mosque, isRice: false, slug: 'kas-masjid', name: 'Kas Masjid');
+
+        Sanctum::actingAs($this->officer($mosque));
+
+        $this->postJson('/api/v1/charity-transactions', [
+            'charity_type_id' => $type->id,
+            'payer_name' => 'Pak Budi',
+            'total_money' => 50000,
+            'payment_method' => 'cash',
+        ], $this->header($mosque))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('charity_type_id');
+
+        $this->assertDatabaseCount('charity_transactions', 0);
+    }
+
+    #[Test]
     public function it_refuses_an_amount_below_the_minimum(): void
     {
         $mosque = $this->mosque();
@@ -211,14 +265,19 @@ class QuickCharityTest extends TestCase
         ?int $minAmount = null,
         ?int $maxAmount = null,
         bool $isRice = true,
+        string $slug = 'zakat-fitrah',
+        string $name = 'Zakat Fitrah',
     ): CharityType {
-        $sourceId = DB::table('m_charity_type_sources')->insertGetId([
-            'name' => 'Zakat Fitrah',
-            'slug' => 'zakat-fitrah-' . fake()->unique()->numerify('####'),
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // A real slug: the slug decides which receipt table holds the amount,
+        // and a made-up one is exactly what hid amounts being dropped.
+        $sourceId = DB::table('m_charity_type_sources')->where('slug', $slug)->value('id')
+            ?? DB::table('m_charity_type_sources')->insertGetId([
+                'name' => $name,
+                'slug' => $slug,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
         return CharityType::forceCreate([
             'organization_id' => $organization->id,

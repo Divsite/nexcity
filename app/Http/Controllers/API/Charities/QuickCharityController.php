@@ -5,6 +5,9 @@ namespace App\Http\Controllers\API\Charities;
 use App\Http\Controllers\Controller;
 use App\Models\Charities\CharityTransaction;
 use App\Models\CharityTypes\CharityType;
+use App\Services\Charities\CharityTransactionService;
+use App\Support\AccountRef;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -75,7 +78,10 @@ class QuickCharityController extends Controller
     {
         $validated = $request->validate([
             'charity_type_id' => 'required|integer',
-            'payer_name' => 'required|string|max:255',
+            // A looked-up account names the payer by itself; without one the
+            // typed name is the whole record.
+            'payer_ref' => 'nullable|string|max:1024',
+            'payer_name' => 'required_without:payer_ref|nullable|string|max:255',
             'payer_phone' => 'nullable|string|max:32',
             'total_money' => 'nullable|numeric|min:0',
             'total_rice' => 'nullable|numeric|min:0',
@@ -100,29 +106,62 @@ class QuickCharityController extends Controller
 
         $this->assertAmountIsUsable($validated, $type);
 
-        $transaction = CharityTransaction::create([
-            'organization_id' => $organizationId,
-            'charity_type_id' => $type->id,
-            'year' => now()->year,
-            'payer_name' => $validated['payer_name'],
-            'payer_phone' => $validated['payer_phone'] ?? null,
-            'payment_method' => $validated['payment_method'],
-            'total_money' => $validated['total_money'] ?? null,
-            'total_rice' => $validated['total_rice'] ?? null,
-            // Recorded at the counter means the money is already in hand;
-            // there is no pending state to sit in.
-            'status' => 'paid',
-            'received_by' => $request->user()->id,
-            'received_at' => now(),
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        $payer = filled($validated['payer_ref'] ?? null)
+            ? AccountRef::resolve($validated['payer_ref'], $organizationId, 'payer_ref')
+            : null;
+
+        $slug = $type->source?->slug;
+        $receiptClass = CharityTransactionService::receiptClassFor($slug);
+
+        // The amount is stored on the type's receipt, not on the transaction.
+        // A type without one would save a payment with no amount — refused,
+        // so it is recorded on the web instead, where the officer can see it.
+        if (! $receiptClass) {
+            throw ValidationException::withMessages([
+                'charity_type_id' => 'Jenis amal ini belum bisa dicatat dari aplikasi. Catat lewat web.',
+            ]);
+        }
+
+        $takesRice = in_array($slug, ['zakat-fitrah', 'fidyah'], true);
+        $money = filled($validated['total_money'] ?? null) ? (float) $validated['total_money'] : null;
+        $rice = $takesRice && filled($validated['total_rice'] ?? null) ? (float) $validated['total_rice'] : null;
+
+        $transaction = DB::transaction(function () use ($organizationId, $type, $validated, $payer, $request, $receiptClass, $takesRice, $money, $rice) {
+            $transaction = CharityTransaction::create([
+                'organization_id' => $organizationId,
+                'charity_type_id' => $type->id,
+                'year' => now()->year,
+                'payer_name' => filled($validated['payer_name'] ?? null)
+                    ? $validated['payer_name']
+                    : $payer?->name,
+                'payer_phone' => $validated['payer_phone'] ?? $payer?->phone_normalized,
+                // Shows the payment in the warga's own "Riwayat amal".
+                'payer_user_id' => $payer?->id,
+                'payment_method' => $validated['payment_method'],
+                // Recorded at the counter means the money is already in hand;
+                // there is no pending state to sit in.
+                'status' => CharityTransaction::STATUS_PAID,
+                'received_by' => $request->user()->id,
+            ]);
+
+            $receiptClass::create(array_filter([
+                'charity_transaction_id' => $transaction->id,
+                'is_rice' => $takesRice ? $rice !== null : null,
+                'amount_money' => $money,
+                'amount_rice' => $rice,
+                'notes' => $validated['notes'] ?? null,
+            ], fn ($value) => $value !== null));
+
+            return $transaction;
+        });
 
         return response()->json([
             'id' => $transaction->id,
             'payer_name' => $transaction->payer_name,
-            'total_money' => $transaction->total_money,
-            'total_rice' => $transaction->total_rice,
-            'received_at' => $transaction->received_at?->toIso8601String(),
+            'is_linked' => $payer !== null,
+            'total_money' => $money,
+            'total_rice' => $rice,
+            'received_at' => $transaction->created_at?->toIso8601String(),
             'message' => 'Amal tercatat.',
         ], 201);
     }

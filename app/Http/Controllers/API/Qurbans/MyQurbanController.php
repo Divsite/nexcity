@@ -20,8 +20,10 @@ use Illuminate\Http\Request;
  * left, and whether it has been slaughtered yet is what they open the app to
  * see.
  *
- * Only orders taken from the app carry the warga's account; a line a pengurus
- * filled at the counter has no owner to show it to. Scoped to the caller.
+ * Orders taken from the app carry the warga's account, and so does a line a
+ * pengurus filled at the counter after looking the warga up ("Akun warga").
+ * A counter line recorded by name alone has no owner to show it to. Scoped to
+ * the caller.
  */
 class MyQurbanController extends Controller
 {

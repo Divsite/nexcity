@@ -537,12 +537,16 @@ class CharityTransactionService
             ->toArray();
     }
 
-    protected function syncDetail(CharityTransaction $transaction, array $detail, bool $replace = false): void
+    /**
+     * Where a type's amount lives. A transaction row carries no amount of its
+     * own: the money and rice are on the receipt for its type, and a type
+     * with no receipt table cannot hold an amount at all.
+     *
+     * @return class-string<\Illuminate\Database\Eloquent\Model>|null
+     */
+    public static function receiptClassFor(?string $slug): ?string
     {
-        $detail = array_filter($detail, fn ($value) => $value !== null);
-        $detail['charity_transaction_id'] = $transaction->id;
-
-        $receiptClass = match ($detail['type']) {
+        return match ($slug) {
             'zakat-fitrah' => CharityFitrahReceipt::class,
             'fidyah' => CharityFidyaReceipt::class,
             'zakat-mal' => CharityMalReceipt::class,
@@ -551,6 +555,14 @@ class CharityTransactionService
             'waqf' => CharityEndowmentReceipt::class,
             default => null,
         };
+    }
+
+    protected function syncDetail(CharityTransaction $transaction, array $detail, bool $replace = false): void
+    {
+        $detail = array_filter($detail, fn ($value) => $value !== null);
+        $detail['charity_transaction_id'] = $transaction->id;
+
+        $receiptClass = self::receiptClassFor($detail['type']);
 
         if (! $receiptClass) {
             return;

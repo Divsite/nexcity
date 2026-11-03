@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\API\Accounts\AccountLookupController;
 use App\Http\Controllers\API\Announcements\AnnouncementController;
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\OtpController;
 use App\Http\Controllers\API\Charities\AvailableYearsController;
 use App\Http\Controllers\API\Charities\CharityListController;
 use App\Http\Controllers\API\Charities\CharityReportController;
+use App\Http\Controllers\API\Charities\MyCharityController;
 use App\Http\Controllers\API\Charities\CharitySummaryController;
 use App\Http\Controllers\API\Charities\QuickCharityController;
 use App\Http\Controllers\API\Distributions\DistributionController;
@@ -112,6 +114,15 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // "Qurban saya": the pekurban's own lines, payments, and animal stage.
         Route::get('me/qurban', [MyQurbanController::class, 'index']);
+
+        // "Riwayat amal": charity a pengurus linked to the caller's account.
+        Route::get('me/charity', [MyCharityController::class, 'index']);
+
+        // Finding the account of the person paying at the counter, so the
+        // payment reaches their own app. Throttled: a phone number in, a
+        // shortened name out, must not become a way to walk the directory.
+        Route::post('accounts/lookup', AccountLookupController::class)
+            ->middleware(['capability:add-mosque-charity-transactions|add-qurban', 'throttle:30,1']);
 
         // Claiming a qurban coupon in the field: the scan is the claim.
         Route::post('qurban/coupons/scan', [QurbanCouponScanController::class, 'store'])

@@ -171,3 +171,6 @@ Mei 2027.
    tujuan `628…@s.whatsapp.net` belum pernah dicoba
 5. Daftar terbuka + hapus akun (§8), sebelum rilis masjid
 6. Server staging dan CI untuk backend (repo ini belum punya CI)
+7. ~~Amal dan bagian qurban dari loket tidak tersambung ke akun~~ — selesai lewat "Akun warga"
+   di form loket ([charity-transactions.md](../modules/charity-transactions.md)). Sekaligus
+   ditemukan: amal yang dicatat dari aplikasi sebelum 3 Nov 2026 tersimpan tanpa nominal

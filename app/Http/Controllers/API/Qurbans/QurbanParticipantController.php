@@ -7,6 +7,7 @@ use App\Models\Qurbans\QurbanOrder;
 use App\Models\Qurbans\QurbanOrderItem;
 use App\Models\Qurbans\QurbanProgram;
 use App\Models\Qurbans\QurbanProgramPackage;
+use App\Support\AccountRef;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +112,8 @@ class QurbanParticipantController extends Controller
 
         $validated = $request->validate([
             'package_id' => ['required', 'integer'],
-            'customer_name' => ['required', 'string', 'max:255'],
+            'owner_ref' => ['nullable', 'string', 'max:1024'],
+            'customer_name' => ['required_without:owner_ref', 'nullable', 'string', 'max:255'],
             'customer_phone' => ['nullable', 'string', 'max:32'],
             'shares' => ['required', 'integer', 'min:1', 'max:7'],
             'is_paid' => ['nullable', 'boolean'],
@@ -134,6 +136,12 @@ class QurbanParticipantController extends Controller
 
         $shares = (int) $validated['shares'];
 
+        // A looked-up account makes this the warga's own order: it appears in
+        // their "Qurban saya" like one they took from the app.
+        $owner = filled($validated['owner_ref'] ?? null)
+            ? AccountRef::resolve($validated['owner_ref'], $organizationId, 'owner_ref')
+            : null;
+
         if ($package->remaining_quota < $shares) {
             throw ValidationException::withMessages([
                 'shares' => $package->remaining_quota > 0
@@ -142,14 +150,17 @@ class QurbanParticipantController extends Controller
             ]);
         }
 
-        $order = DB::transaction(function () use ($package, $validated, $shares, $organizationId, $request) {
+        $order = DB::transaction(function () use ($package, $validated, $shares, $organizationId, $request, $owner) {
             $paid = (bool) ($validated['is_paid'] ?? true);
 
             $order = QurbanOrder::create([
                 'organization_id' => $organizationId,
                 'qurban_program_id' => $package->qurban_program_id,
-                'customer_name' => $validated['customer_name'],
-                'customer_phone' => $validated['customer_phone'] ?? null,
+                'user_id' => $owner?->id,
+                'customer_name' => filled($validated['customer_name'] ?? null)
+                    ? $validated['customer_name']
+                    : $owner?->name,
+                'customer_phone' => $validated['customer_phone'] ?? $owner?->phone_normalized,
                 // Recorded at the counter, not self-service. The distinction
                 // matters later: an online buyer gets notified, a walk-in was
                 // standing there.
