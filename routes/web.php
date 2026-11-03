@@ -63,6 +63,9 @@ Route::get('privacy-policy', PrivacyPolicyController::class)->name('privacy-poli
 Route::get('terms', TermsController::class)->name('terms');
 Route::get('privacy', PrivacyController::class)->name('privacy');
 
+// Google Play's account-deletion URL: reachable without the app or a login.
+Route::view('hapus-akun', 'pages.legals.account-deletion')->name('account-deletion');
+
 Route::get('/login', function () {
     return redirect()->route('login');
 });

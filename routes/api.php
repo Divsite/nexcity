@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\Accounts\AccountLookupController;
+use App\Http\Controllers\API\Accounts\MyAccountController;
 use App\Http\Controllers\API\Announcements\AnnouncementController;
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\OtpController;
@@ -51,6 +52,8 @@ Route::post('auth/login', [AuthController::class, 'login']);
 // Signing in with a WhatsApp code, for warga the RT already registered.
 Route::post('auth/otp/request', [OtpController::class, 'request'])->middleware('throttle:otp-request');
 Route::post('auth/otp/verify', [OtpController::class, 'verify'])->middleware('throttle:otp-verify');
+// Opening an account for a number the code just proved. Tier 1: name + phone.
+Route::post('auth/register', [OtpController::class, 'register'])->middleware('throttle:otp-verify');
 
 Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -116,6 +119,14 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // "Qurban saya": the pekurban's own lines, payments, and animal stage.
         Route::get('me/qurban', [MyQurbanController::class, 'index']);
+
+        // "Hapus akun": whether it can be done, a code to confirm, and doing
+        // it. Required by Google Play; see CloseOwnAccount for what stays.
+        Route::get('me/account', [MyAccountController::class, 'show']);
+        Route::post('me/account/code', [MyAccountController::class, 'requestCode'])
+            ->middleware('throttle:otp-request-self');
+        Route::delete('me/account', [MyAccountController::class, 'destroy'])
+            ->middleware('throttle:10,60');
 
         // "Aktivitas saya": every record on the caller's account, from every
         // mosque and RT, in one list — plus what needs doing.

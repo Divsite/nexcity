@@ -45,6 +45,12 @@ return [
 
     // Sign-in codes over WhatsApp: `log` (development only) or `openclaw`, which
     // reuses the gateway configured below.
+    // Shown on /hapus-akun for people without the app: an email or WhatsApp
+    // number that takes account-deletion requests.
+    'account_deletion' => [
+        'contact' => env('ACCOUNT_DELETION_CONTACT'),
+    ],
+
     'whatsapp_otp' => [
         'driver' => env('WHATSAPP_OTP_DRIVER', 'log'),
     ],

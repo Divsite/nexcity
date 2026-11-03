@@ -29,7 +29,7 @@ class AuthController extends Controller
             ->orWhere('email', $request->login)
             ->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user || $user->closed_at || ! Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Nomor telepon atau password salah.'], 401);
         }
 

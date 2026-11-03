@@ -3,6 +3,7 @@
 namespace Tests\Feature\API;
 
 use App\Models\Users\PhoneOtp;
+use App\Http\Controllers\API\Auth\OtpController;
 use App\Models\Users\User;
 use App\Services\Otp\WhatsAppSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,9 +70,11 @@ class OtpLoginTest extends TestCase
     }
 
     #[Test]
-    public function an_unknown_number_gets_the_same_answer_and_no_message(): void
+    public function an_unknown_number_gets_the_same_answer_and_the_same_message(): void
     {
-        // Answering "not registered" would let anyone walk the RT's phone list.
+        // Answering "not registered" would let anyone walk the RT's phone
+        // list. Since self-registration, an unknown number is sent a code too:
+        // same reply, same WhatsApp text, nothing to tell the two apart.
         $this->makeUser('081234567890');
 
         $known = $this->postJson('/api/auth/otp/request', ['phone' => '081234567890']);
@@ -79,7 +82,73 @@ class OtpLoginTest extends TestCase
 
         $unknown->assertStatus(202);
         $this->assertSame($known->json(), $unknown->json());
-        $this->assertCount(1, $this->sent);
+        $this->assertCount(2, $this->sent);
+        $this->assertSame(
+            preg_replace('/\d{6}/', '', $this->sent[0]['message']),
+            preg_replace('/\d{6}/', '', $this->sent[1]['message']),
+        );
+    }
+
+    // ── Opening an account ─────────────────────────────────────────────────
+
+    #[Test]
+    public function a_new_number_is_asked_for_a_name_only_after_the_code(): void
+    {
+        RateLimiter::clear('otp-phone:6289999999999');
+        $this->postJson('/api/auth/otp/request', ['phone' => '089999999999'])->assertStatus(202);
+
+        $token = $this->postJson('/api/auth/otp/verify', [
+            'phone' => '089999999999',
+            'code' => $this->sentCode(),
+        ])
+            ->assertOk()
+            ->assertJsonPath('registration_required', true)
+            ->assertJsonMissingPath('access_token')
+            ->json('registration_token');
+
+        $this->postJson('/api/auth/register', ['registration_token' => $token, 'name' => 'Budi Santoso'])
+            ->assertCreated()
+            ->assertJsonPath('user.name', 'Budi Santoso')
+            ->assertJsonStructure(['access_token', 'memberships', 'global_capabilities']);
+
+        $user = User::where('phone_normalized', '6289999999999')->sole();
+        $this->assertSame('self', $user->registered_via);
+        // Tier 1: no RT, no resident portal. An RT records them as warga.
+        $this->assertFalse($user->residentProfile()->exists());
+        $this->assertSame([], $user->getRoleNames()->all());
+    }
+
+    #[Test]
+    public function the_registration_token_cannot_be_forged_or_kept(): void
+    {
+        $this->postJson('/api/auth/register', ['registration_token' => 'forged', 'name' => 'Budi'])
+            ->assertStatus(410);
+
+        RateLimiter::clear('otp-phone:6289999999999');
+        $this->postJson('/api/auth/otp/request', ['phone' => '089999999999']);
+        $token = $this->postJson('/api/auth/otp/verify', ['phone' => '089999999999', 'code' => $this->sentCode()])
+            ->json('registration_token');
+
+        $this->travel(OtpController::REGISTRATION_TTL_MINUTES + 1)->minutes();
+
+        $this->postJson('/api/auth/register', ['registration_token' => $token, 'name' => 'Budi'])
+            ->assertStatus(410);
+        $this->assertDatabaseMissing('users', ['phone_normalized' => '6289999999999']);
+    }
+
+    #[Test]
+    public function a_number_registered_in_the_meantime_is_not_duplicated(): void
+    {
+        RateLimiter::clear('otp-phone:6289999999999');
+        $this->postJson('/api/auth/otp/request', ['phone' => '089999999999']);
+        $token = $this->postJson('/api/auth/otp/verify', ['phone' => '089999999999', 'code' => $this->sentCode()])
+            ->json('registration_token');
+
+        $this->makeUser('089999999999');
+
+        $this->postJson('/api/auth/register', ['registration_token' => $token, 'name' => 'Budi'])
+            ->assertStatus(409);
+        $this->assertSame(1, User::where('phone_normalized', '6289999999999')->count());
     }
 
     #[Test]

@@ -63,6 +63,11 @@ class RouteServiceProvider extends ServiceProvider
 
         // The per-code attempt limit stops guessing one code; this stops
         // guessing across many numbers from one place.
+        // A code to one's own number, to confirm deleting the account.
+        RateLimiter::for('otp-request-self', function (Request $request) {
+            return Limit::perHour(5)->by('otp-self:' . $request->user()?->id);
+        });
+
         RateLimiter::for('otp-verify', function (Request $request) {
             return Limit::perMinute(10)->by('otp-verify:' . $request->ip());
         });

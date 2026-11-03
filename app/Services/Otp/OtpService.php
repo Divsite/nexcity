@@ -12,15 +12,19 @@ use RuntimeException;
  * Signing in with a code sent to WhatsApp.
  *
  * Built for warga whose account the RT already created: they activate it with
- * the phone number the RT recorded, and never need a password. It does not
- * create accounts.
+ * the phone number the RT recorded, and never need a password. Since
+ * 4 November 2026 it is also the way in for someone with no account yet: the
+ * same code proves the phone, and only then does the app ask for a name
+ * (OtpController::register).
  *
  * Two rules shape everything here:
  *
  * 1. **The request step never says whether a number is registered.** Anyone
  *    can type a number; answering "not found" would let them walk the RT's
- *    phone list. Only after the code is entered — which proves the person holds
- *    that phone — does the answer depend on the account.
+ *    phone list. A code goes to every valid number, so the answer, the timing
+ *    and the WhatsApp message are the same either way. Only after the code is
+ *    entered — which proves the person holds that phone — does the answer
+ *    depend on the account.
  * 2. **The code is never stored**, only its HMAC.
  */
 class OtpService
@@ -37,16 +41,12 @@ class OtpService
     }
 
     /**
-     * Sends a code if the number belongs to an account. Silent otherwise.
+     * Sends a code to the number, account or not (see rule 1).
      *
      * @throws RuntimeException when WhatsApp could not take the message
      */
     public function request(string $phone): void
     {
-        if ($this->accountsFor($phone)->isEmpty()) {
-            return;
-        }
-
         $latest = PhoneOtp::query()->where('phone', $phone)->latest('id')->first();
 
         if ($latest && $latest->created_at->diffInSeconds(now()) < self::RESEND_AFTER_SECONDS) {
@@ -70,18 +70,19 @@ class OtpService
         ]);
 
         $this->sender->send($phone, implode("\n", [
-            "Kode masuk Nexcity: {$code}",
+            "Kode Nexcity: {$code}",
             'Berlaku ' . self::CODE_TTL_MINUTES . ' menit.',
             'Jangan berikan kode ini kepada siapa pun, termasuk pengurus.',
         ]));
     }
 
     /**
-     * Checks the code and returns the account it signs in to.
+     * Checks the code and returns the account it signs in to — or null when
+     * the number has none yet, and the caller may offer to open one.
      *
      * @throws OtpException
      */
-    public function verify(string $phone, string $code): User
+    public function verify(string $phone, string $code): ?User
     {
         $otp = PhoneOtp::query()
             ->where('phone', $phone)
@@ -114,16 +115,20 @@ class OtpService
             throw OtpException::ambiguous();
         }
 
-        // Empty only if the account was deleted between request and verify.
-        return $accounts->first() ?? throw OtpException::expired();
+        return $accounts->first();
     }
 
     /**
      * @return Collection<int, User>
      */
-    protected function accountsFor(string $phone): Collection
+    public function accountsFor(string $phone): Collection
     {
-        return User::query()->where('phone_normalized', $phone)->limit(2)->get();
+        // A closed account is not an account: its owner deleted it.
+        return User::query()
+            ->where('phone_normalized', $phone)
+            ->whereNull('closed_at')
+            ->limit(2)
+            ->get();
     }
 
     protected function hash(string $phone, string $code): string

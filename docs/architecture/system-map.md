@@ -77,7 +77,7 @@ Detail: [../operations/authorization-audit.md](../operations/authorization-audit
 | Cara masuk | Untuk | Catatan |
 |---|---|---|
 | Nomor HP / username / email + kata sandi | pengurus | `POST /api/auth/login` |
-| **Kode WhatsApp** | warga yang sudah didaftarkan RT | `POST /api/auth/otp/request` + `/verify`; tidak membuat akun |
+| **Kode WhatsApp** | semua warga | `POST /api/auth/otp/request` + `/verify`. Nomor yang belum punya akun mendapat `registration_token` setelah kodenya benar, lalu `POST /api/auth/register` (nama) membuat akun tingkat 1 |
 
 Nomor HP disimpan dalam berbagai bentuk (`0812…`, `+62 812 …`, dan `+60812…` dari bug format
 Malaysia). Pencocokan memakai `users.phone_normalized` (`App\Support\IndonesianPhone`).
@@ -182,11 +182,33 @@ web. Detail: `nexcity-flutter-apps/docs/web-vs-mobile.md`.
 | Tahap | Kapan | Bentuk |
 |---|---|---|
 | **Aktivasi** | rilis RT | warga yang sudah diinput RT masuk dengan kode WhatsApp — **sudah dibangun** |
-| **Daftar terbuka** | rilis masjid | akun tingkat 1 (nomor HP + OTP): lihat program masjid, ikut patungan; naik ke tingkat 2 (warga RT) lewat nomor yang cocok dengan data RT, atau persetujuan pengurus RT — **belum dibangun** |
+| **Daftar terbuka** | rilis masjid | akun tingkat 1 (nomor HP + kode WhatsApp + nama): lihat program masjid, ikut patungan, amal yang ditautkan — **sudah dibangun 4 Nov 2026**. Naik ke tingkat 2 (warga RT) terjadi ketika RT mendata nomor itu; persetujuan dari aplikasi belum ada |
+| **Hapus akun** | wajib Play Store | `DELETE /api/v1/me/account` (konfirmasi kode WhatsApp atau kata sandi) + halaman web `/hapus-akun` — **sudah dibangun**. Rinciannya di bawah |
 
-Syarat daftar terbuka: jangan pernah menjawab "KK ditemukan" (cegah penelusuran data), jangan minta
-NIK (UU PDP), baris patungan yang belum dibayar kedaluwarsa, dan **fitur hapus akun** (wajib Play
-Store untuk aplikasi yang bisa membuat akun).
+Syarat daftar terbuka:
+
+- ✅ **Tidak pernah menjawab apakah sebuah nomor terdaftar.** Kode dikirim ke setiap nomor yang
+  valid, dengan pesan yang sama.
+- ✅ **Tidak meminta NIK atau KK.**
+- ⬜ **Baris patungan yang belum dibayar perlu kedaluwarsa** — belum dibangun.
+- ✅ **Hapus akun.**
+
+**Hapus akun** (`App\Actions\Accounts\CloseOwnAccount`):
+
+- *Dihapus:*
+  - akses masuk (semua token, kata sandi, nomor HP tidak lagi cocok);
+  - email, username, avatar;
+  - untuk akun daftar sendiri, juga nama dan HP.
+- *Disimpan:*
+  - catatan keuangan organisasi (amal, iuran, patungan), dengan nama yang dicatat di loket;
+  - data warga yang dicatat RT. Itu data kependudukan RT; penghapusannya keputusan RT.
+- *Ditolak:* pengurus yang masih memegang level, sampai jabatannya dilepas.
+
+Halaman web `/hapus-akun` menampilkan kontak dari `ACCOUNT_DELETION_CONTACT` untuk orang yang tidak
+punya aplikasi.
+
+⚠️ **Kebijakan privasi**: halaman `privacy` dan `privacy-policy` di web ini masih berisi kebijakan
+untuk *samsulhadiss.com*, bukan Nexcity. Play Store butuh kebijakan privasi Nexcity sendiri.
 
 ## 9. Rencana rilis
 
@@ -208,7 +230,8 @@ Mei 2027.
 3. Antrean koreksi data warga di web (sekarang hanya di aplikasi)
 4. Uji kirim WhatsApp lewat OpenClaw ke nomor pribadi (`WHATSAPP_OTP_DRIVER=openclaw`): format
    tujuan `628…@s.whatsapp.net` belum pernah dicoba
-5. Daftar terbuka + hapus akun (§8), sebelum rilis masjid
+5. ~~Daftar terbuka + hapus akun (§8)~~ — selesai 4 Nov 2026. Tersisa: kedaluwarsa baris patungan
+   yang belum dibayar, dan **kebijakan privasi Nexcity** (yang ada milik samsulhadiss.com)
 6. Server staging dan CI untuk backend (repo ini belum punya CI)
 7. ~~Amal dan bagian qurban dari loket tidak tersambung ke akun~~ — selesai lewat "Akun warga"
    di form loket ([charity-transactions.md](../modules/charity-transactions.md)). Sekaligus
