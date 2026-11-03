@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\API\AnnouncementResource;
 use App\Models\Announcements\Announcement;
 use App\Models\Organizations\Organization;
+use App\Models\Profiles\UserResidentProfile;
 use App\Services\Authorization\CapabilityResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
 
 /**
  * Announcements, read side.
@@ -20,10 +22,16 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  *   May this user read it?      → Announcement::scopeVisibleTo
  *   Should it arrive unasked?   → the membership filter in index()
  *
- * A mosque's public announcement is readable by anyone, but it does not push
- * itself into the feed of someone who has never been to that mosque. They see
- * it when they open the mosque — there is no "follow" in this product, and
- * without one, an open feed would fill with strangers' notices.
+ * A public announcement is readable by anyone, but it does not push itself
+ * into the feed of someone who has never been near that mosque or RT. They see
+ * it when they open the organization — there is no "follow" in this product,
+ * and without one an open feed would fill with strangers' notices.
+ *
+ * The one widening the warga asks for themselves is `area`: public notices
+ * from organizations in the same kelurahan, kecamatan, kota or provinsi as
+ * where they live. The location is stored as five separate fields on both the
+ * warga and the organization precisely so it can be matched one level at a
+ * time.
  */
 class AnnouncementController extends Controller
 {
@@ -34,18 +42,73 @@ class AnnouncementController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $validated = $request->validate([
+            'area' => ['nullable', Rule::in(array_keys(self::AREAS))],
+        ]);
+
         [$memberIds, $staffIds] = $this->organizationIds($request);
+
+        $area = $validated['area'] ?? null;
+        $place = $area ? $this->placeOf($request->user()->id, self::AREAS[$area]) : null;
 
         $announcements = Announcement::query()
             ->published()
             ->visibleTo($memberIds, $staffIds)
-            // Their own organizations only — see the class comment.
-            ->whereIn('announcements.organization_id', $memberIds)
+            ->where(function ($q) use ($memberIds, $area, $place) {
+                // Their own organizations — see the class comment.
+                $q->whereIn('announcements.organization_id', $memberIds);
+
+                // Plus, when asked, public notices from around where they
+                // live. Only public: a neighbouring RT's members-only notice
+                // stays with that RT, and visibleTo above already holds that.
+                if ($place !== null) {
+                    $column = self::AREAS[$area];
+                    $q->orWhere(fn ($near) => $near
+                        ->where('announcements.audience', Announcement::AUDIENCE_PUBLIC)
+                        ->whereHas('organization', fn ($o) => $o->where($column, $place)));
+                }
+            })
             ->with(['category', 'organization', 'author'])
             ->feedOrder()
             ->paginate(20);
 
-        return AnnouncementResource::collection($announcements);
+        return AnnouncementResource::collection($announcements)->additional([
+            // Null when no area was asked for, or the warga's address has no
+            // value at that level — the app says so instead of showing an
+            // unexplained short list.
+            'area' => $place !== null ? $area : null,
+        ]);
+    }
+
+    /** `area` → the location column it matches, warga and organization alike. */
+    protected const AREAS = [
+        'village' => 'village_id',
+        'district' => 'district_id',
+        'city' => 'city_id',
+        'province' => 'province_id',
+    ];
+
+    /**
+     * Where the warga lives, at one level: their resident profile first, then
+     * the RT it points to, then an RT they are a member of — the address is
+     * often filled in on the RT and never on the person.
+     */
+    protected function placeOf(int $userId, string $column): ?int
+    {
+        $profile = UserResidentProfile::query()
+            ->with('organization')
+            ->where('user_id', $userId)
+            ->first();
+
+        $value = $profile?->{$column}
+            ?? $profile?->organization?->{$column}
+            ?? Organization::query()
+                ->where('type', Organization::TYPE_RT)
+                ->whereHas('users', fn ($q) => $q->whereKey($userId))
+                ->whereNotNull($column)
+                ->value($column);
+
+        return $value !== null ? (int) $value : null;
     }
 
     /**

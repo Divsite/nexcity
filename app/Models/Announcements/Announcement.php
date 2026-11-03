@@ -14,8 +14,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Something an RT or a mosque wants people to know.
  *
  * The interesting part of this model is not the text — it is who is allowed to
- * read it. An RT's affairs are internal to the RT, the same rule that governs
- * iuran. A mosque's programmes are open by design. A death notice is neither:
+ * read it. The publisher chooses: `members` stays inside the organization (an
+ * RT's own affairs, the same rule that governs iuran), `public` is for anyone
+ * (a mosque's kajian, an RT's open event that neighbours are welcome to).
+ * Ruled by the product owner, 3 November 2026: an RT may address the public
+ * too; its iuran and its members-only notices stay its own. A death notice is neither:
  * it names a grieving family and gives the address of the house they are
  * sitting in, so it stays inside the neighbourhood no matter who publishes it.
  */
@@ -34,6 +37,9 @@ class Announcement extends Model
         self::AUDIENCE_MEMBERS,
         self::AUDIENCE_STAFF,
     ];
+
+    /** Organization types that may address the public. */
+    public const PUBLIC_PUBLISHERS = [Organization::TYPE_MOSQUE, Organization::TYPE_RT];
 
     protected $guarded = ['id'];
 
@@ -103,12 +109,12 @@ class Announcement extends Model
         array $staffOrganizationIds,
     ): Builder {
         return $query->where(function (Builder $q) use ($memberOrganizationIds, $staffOrganizationIds) {
-            // Public: only a mosque may publish this way. An RT marked public
-            // would be a mistake in the data, and the read path refuses to
-            // honour it rather than trusting that the write path was correct.
+            // Public: a mosque or an RT addressing anyone. Other organization
+            // types are not live yet, and the read path refuses them rather
+            // than trusting that whatever wrote the row was correct.
             $q->where(function (Builder $public) {
                 $public->where('announcements.audience', self::AUDIENCE_PUBLIC)
-                    ->whereHas('organization', fn (Builder $o) => $o->where('type', Organization::TYPE_MOSQUE));
+                    ->whereHas('organization', fn (Builder $o) => $o->whereIn('type', self::PUBLIC_PUBLISHERS));
             });
 
             if ($memberOrganizationIds !== []) {
@@ -140,13 +146,13 @@ class Announcement extends Model
     /**
      * Whether this organization may address the general public at all.
      *
-     * A mosque may: its programmes are open to anyone, including people who
-     * live nowhere near it. An RT may not, for the same reason its iuran is
-     * private — an RT's business belongs to its own residents.
+     * A mosque may: its programmes are open to anyone. An RT may too, for an
+     * open event (a 17-an contest neighbours are invited to) — what stays
+     * inside an RT is its iuran and whatever it marks `members`.
      */
     public static function mayPublishPublicly(?Organization $organization): bool
     {
-        return $organization?->type === Organization::TYPE_MOSQUE;
+        return in_array($organization?->type, self::PUBLIC_PUBLISHERS, true);
     }
 
     public function isUrgent(): bool

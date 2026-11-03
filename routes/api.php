@@ -26,6 +26,7 @@ use App\Http\Controllers\API\Qurbans\QurbanOverviewController;
 use App\Http\Controllers\API\Qurbans\QurbanParticipantController;
 use App\Http\Controllers\API\Qurbans\QurbanPaymentController;
 use App\Http\Controllers\API\Qurbans\QurbanSlotController;
+use App\Http\Controllers\API\Residents\MyActivityController;
 use App\Http\Controllers\API\Residents\MyEntitlementsController;
 use App\Http\Controllers\API\Residents\MyProfileController;
 use App\Http\Controllers\API\Residents\RtCorrectionController;
@@ -114,6 +115,10 @@ Route::middleware(['auth:sanctum', 'organization.context'])->group(function () {
 
         // "Qurban saya": the pekurban's own lines, payments, and animal stage.
         Route::get('me/qurban', [MyQurbanController::class, 'index']);
+
+        // "Aktivitas saya": every record on the caller's account, from every
+        // mosque and RT, in one list — plus what needs doing.
+        Route::get('me/activity', [MyActivityController::class, 'index']);
 
         // "Riwayat amal": charity a pengurus linked to the caller's account.
         Route::get('me/charity', [MyCharityController::class, 'index']);

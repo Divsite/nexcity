@@ -144,6 +144,9 @@ amal tetapi tidak punya informasi pribadi RT.
 Belum dimodelkan: **arisan**. Arisan adalah undian bergilir, bukan tagihan. Kalau dicatat sebagai
 skema iuran, hanya setorannya yang tercatat, tidak dengan giliran siapa yang menerima.
 
+Fitur per warga (internal/eksternal), siapa melihat apa, lokasi per tingkat, dan menu placeholder:
+[warga-features.md](warga-features.md).
+
 ### Alur data
 
 ```

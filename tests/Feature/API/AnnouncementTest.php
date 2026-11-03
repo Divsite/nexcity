@@ -11,6 +11,7 @@ use App\Models\Organizations\UserLevelPermission;
 use App\Models\Users\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -122,22 +123,101 @@ class AnnouncementTest extends TestCase
     }
 
     #[Test]
-    public function an_rt_cannot_address_the_public_even_if_the_row_says_so(): void
+    public function an_rts_public_event_is_open_to_another_rts_warga(): void
     {
-        // An RT's business belongs to its own residents — the same rule that
-        // makes iuran private. The read path refuses to honour `public` on an
-        // RT rather than trusting that whatever wrote the row was correct.
-        $rt = $this->organization(Organization::TYPE_RT);
-        $outsider = $this->resident($this->organization(Organization::TYPE_RT));
+        // Ruled 3 November 2026: RT B's open kerja bakti may be read by a
+        // warga of RT A. RT B's members-only notice may not — that is
+        // another_rts_announcement_never_reaches_me above.
+        $rtB = $this->organization(Organization::TYPE_RT);
+        $wargaA = $this->resident($this->organization(Organization::TYPE_RT));
 
-        $this->announcement($rt, title: 'Bocor', audience: Announcement::AUDIENCE_PUBLIC);
+        $this->announcement($rtB, title: 'Lomba 17-an terbuka', audience: Announcement::AUDIENCE_PUBLIC);
+        $this->announcement($rtB, title: 'Rapat warga RT B');
 
-        Sanctum::actingAs($outsider);
+        Sanctum::actingAs($wargaA);
 
-        $this->getJson('/api/v1/announcements')->assertOk()->assertJsonCount(0, 'data');
-        $this->getJson("/api/v1/organizations/{$rt->slug}/announcements")
+        $this->getJson("/api/v1/organizations/{$rtB->slug}/announcements")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Lomba 17-an terbuka');
+    }
+
+    #[Test]
+    public function an_organization_type_not_yet_live_cannot_address_the_public(): void
+    {
+        $umkm = Organization::forceCreate([
+            'uuid' => (string) Str::uuid(),
+            'slug' => 'umkm-' . fake()->unique()->numerify('#####'),
+            'name' => 'UMKM Uji',
+            'type' => 'umkm',
+        ]);
+        $this->announcement($umkm, title: 'Promo', audience: Announcement::AUDIENCE_PUBLIC);
+
+        Sanctum::actingAs($this->resident($this->organization(Organization::TYPE_RT)));
+
+        $this->getJson("/api/v1/organizations/{$umkm->slug}/announcements")
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    }
+
+    // ── Around where I live ─────────────────────────────────────────────────
+
+    #[Test]
+    public function the_area_filter_brings_public_notices_from_the_same_kelurahan(): void
+    {
+        [$village, $otherVillage] = $this->villages(2);
+
+        $rtA = $this->organization(Organization::TYPE_RT, villageId: $village);
+        $rtB = $this->organization(Organization::TYPE_RT, villageId: $village);
+        $farRt = $this->organization(Organization::TYPE_RT, villageId: $otherVillage);
+        $wargaA = $this->resident($rtA);
+
+        $this->announcement($rtB, title: 'Kerja bakti terbuka', audience: Announcement::AUDIENCE_PUBLIC);
+        $this->announcement($rtB, title: 'Iuran RT B naik');
+        $this->announcement($farRt, title: 'Jauh', audience: Announcement::AUDIENCE_PUBLIC);
+
+        Sanctum::actingAs($wargaA);
+
+        // Unasked, the feed stays the warga's own.
+        $this->getJson('/api/v1/announcements')->assertOk()->assertJsonCount(0, 'data');
+
+        $this->getJson('/api/v1/announcements?area=village')
+            ->assertOk()
+            ->assertJsonPath('area', 'village')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Kerja bakti terbuka');
+    }
+
+    #[Test]
+    public function a_wider_area_reaches_further_one_level_at_a_time(): void
+    {
+        [$village, $otherVillage] = $this->villages(2);
+
+        $rtA = $this->organization(Organization::TYPE_RT, villageId: $village);
+        $mosque = $this->organization(Organization::TYPE_MOSQUE, villageId: $otherVillage);
+        $this->announcement($mosque, title: 'Kajian kecamatan', audience: Announcement::AUDIENCE_PUBLIC);
+
+        Sanctum::actingAs($this->resident($rtA));
+
+        $this->getJson('/api/v1/announcements?area=village')->assertOk()->assertJsonCount(0, 'data');
+        // Both kelurahan sit in one kecamatan.
+        $this->getJson('/api/v1/announcements?area=district')
+            ->assertOk()
+            ->assertJsonPath('data.0.title', 'Kajian kecamatan');
+    }
+
+    #[Test]
+    public function without_an_address_the_area_is_not_applied(): void
+    {
+        $rt = $this->organization(Organization::TYPE_RT);
+
+        Sanctum::actingAs($this->resident($rt));
+
+        $this->getJson('/api/v1/announcements?area=city')
+            ->assertOk()
+            ->assertJsonPath('area', null);
+
+        $this->getJson('/api/v1/announcements?area=planet')->assertUnprocessable();
     }
 
     #[Test]
@@ -318,14 +398,45 @@ class AnnouncementTest extends TestCase
 
     // ── helpers ─────────────────────────────────────────────────────────────
 
-    protected function organization(string $type): Organization
+    protected function organization(string $type, ?int $villageId = null): Organization
     {
+        $place = $villageId ? DB::table('loc_villages')
+            ->join('loc_districts', 'loc_districts.id', '=', 'loc_villages.district_id')
+            ->join('loc_cities', 'loc_cities.id', '=', 'loc_districts.city_id')
+            ->where('loc_villages.id', $villageId)
+            ->first(['loc_villages.district_id', 'loc_districts.city_id', 'loc_cities.province_id']) : null;
+
         return Organization::forceCreate([
             'uuid' => (string) Str::uuid(),
             'slug' => $type . '-' . fake()->unique()->numerify('#####'),
             'name' => 'Organisasi Uji',
             'type' => $type,
+            'village_id' => $villageId,
+            'district_id' => $place?->district_id,
+            'city_id' => $place?->city_id,
+            'province_id' => $place?->province_id,
         ]);
+    }
+
+    /**
+     * Kelurahan side by side in one kecamatan.
+     *
+     * @return list<int>
+     */
+    protected function villages(int $count): array
+    {
+        $stamp = fn () => ['created_at' => now(), 'updated_at' => now()];
+        $code = fn () => fake()->unique()->numerify('#######');
+
+        $country = DB::table('loc_countries')->insertGetId(['code' => $code(), 'name' => 'Indonesia'] + $stamp());
+        $province = DB::table('loc_provinces')->insertGetId(['country_id' => $country, 'code' => $code(), 'name' => 'Banten'] + $stamp());
+        $city = DB::table('loc_cities')->insertGetId(['province_id' => $province, 'code' => $code(), 'name' => 'Tangerang Selatan'] + $stamp());
+        $district = DB::table('loc_districts')->insertGetId(['city_id' => $city, 'code' => $code(), 'name' => 'Pondok Aren'] + $stamp());
+
+        return array_map(
+            fn (int $i) => DB::table('loc_villages')->insertGetId(['district_id' => $district, 'code' => $code(), 'name' => "Kelurahan {$i}"] + $stamp()),
+            range(1, $count),
+        );
     }
 
     /**
