@@ -116,6 +116,8 @@ class QurbanPaymentController extends Controller
             // paid share still showing as owing, and the mosque chasing
             // somebody who has already paid.
             $order->update([
+                // Any deposit ends the hold: the line is now paid for, in part.
+                'hold_expires_at' => null,
                 'status' => match (true) {
                     $target > 0 && $alreadyPaid + $amount >= $target => 'paid',
                     default => 'partial_paid',

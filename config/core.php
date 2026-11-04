@@ -34,4 +34,8 @@ return [
     'custom_setting_menu_enabled' => env('CUSTOM_SETTING_MENU_ENABLED', false),
     'custom_setting_menu_view' => env('CUSTOM_SETTING_MENU_VIEW', null),
     'allow_multiple_sessions' => env('ALLOW_MULTIPLE_SESSIONS', true),
+
+    // Days a patungan line taken from the app is held without a deposit
+    // before it is released for someone else. See ReleaseUnpaidHolds.
+    'qurban_hold_days' => (int) env('QURBAN_HOLD_DAYS', 7),
 ];

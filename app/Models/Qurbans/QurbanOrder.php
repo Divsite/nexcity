@@ -27,6 +27,13 @@ class QurbanOrder extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        // An app line with no deposit is released at this moment; see
+        // App\Actions\Qurban\ReleaseUnpaidHolds.
+        'hold_expires_at' => 'datetime',
+        'expired_at' => 'datetime',
+    ];
+
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);

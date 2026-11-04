@@ -50,6 +50,9 @@ class MyQurbanController extends Controller
                 'year' => $order->program?->year,
                 'organization' => $order->organization?->name,
                 'organization_slug' => $order->organization?->slug,
+                // Null once a deposit arrived. Before that, the line is released
+                // for someone else at this moment if nothing is paid.
+                'pay_before' => $order->hold_expires_at?->toIso8601String(),
                 ...$order->paymentSummary(),
                 'shares' => $order->items
                     ->flatMap(fn (QurbanOrderItem $item) => $item->animalAllocations)

@@ -120,6 +120,7 @@ class MyActivityController extends Controller
                     status: $settled ? 'settled' : 'unsettled',
                     money: $bill['target'] ?: null,
                     remaining: $settled ? 0.0 : $bill['remaining'],
+                    payBefore: $order->hold_expires_at,
                     needsAction: ! $settled,
                     target: ['screen' => 'qurban', 'id' => $order->id],
                 );
@@ -234,6 +235,7 @@ class MyActivityController extends Controller
         ?float $rice = null,
         ?float $remaining = null,
         ?string $quantity = null,
+        mixed $payBefore = null,
         bool $needsAction = false,
     ): array {
         return [
@@ -251,6 +253,8 @@ class MyActivityController extends Controller
             'rice' => $rice,
             'remaining' => $remaining,
             'quantity' => $quantity,
+            // A patungan line with no deposit yet is released at this moment.
+            'pay_before' => $payBefore ? Carbon::parse($payBefore)->toIso8601String() : null,
             'needs_action' => $needsAction,
             'target' => $target,
         ];

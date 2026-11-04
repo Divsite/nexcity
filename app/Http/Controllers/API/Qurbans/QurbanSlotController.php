@@ -158,6 +158,11 @@ class QurbanSlotController extends Controller
                 'is_paid' => $order?->status === 'paid',
                 // Whose line it is, so the app can mark "punya Anda".
                 'is_mine' => $userId !== null && (int) $order?->user_id === $userId,
+                // When an unpaid line goes back on the board; shown to its
+                // owner and to pengurus.
+                'pay_before' => ($isStaff || ($userId !== null && (int) $order?->user_id === $userId))
+                    ? $order?->hold_expires_at?->toIso8601String()
+                    : null,
                 // Pengurus business only. A warga has no reason to collect the
                 // phone numbers of six neighbours from a screen.
                 'phone' => $isStaff ? $order?->customer_phone : null,
@@ -257,6 +262,12 @@ class QurbanSlotController extends Controller
                 // instalments, and a slot marked paid on the day it was taken
                 // would have the mosque order an animal it cannot fund.
                 'status' => $paid ? 'paid' : 'pending_payment',
+                // A warga's own line is held until the first deposit, then
+                // released (ReleaseUnpaidHolds). A pengurus's counter line is
+                // not: they know the person and answer for it.
+                'hold_expires_at' => ! $isStaff && ! $paid
+                    ? now()->addDays((int) config('core.qurban_hold_days'))
+                    : null,
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => $user->id,
             ]);
@@ -291,6 +302,7 @@ class QurbanSlotController extends Controller
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'pay_before' => $order->hold_expires_at?->toIso8601String(),
             'shares' => count($names),
             'message' => 'Bagian patungan diambil.',
         ], 201);

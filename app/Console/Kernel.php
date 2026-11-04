@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\FormSubmissionFiles\DeleteTemporaryFiles;
+use App\Console\Commands\ReleaseUnpaidQurbanHolds;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -20,6 +21,10 @@ class Kernel extends ConsoleKernel
 
         // Delete temporary files for form submission files
         $schedule->command(DeleteTemporaryFiles::class)->daily();
+
+        // Patungan lines from the app with no deposit in time go back on the
+        // board. Hourly: a line should free up the day its hold ends.
+        $schedule->command(ReleaseUnpaidQurbanHolds::class)->hourly()->withoutOverlapping();
     }
 
     /**

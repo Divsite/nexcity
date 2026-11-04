@@ -190,7 +190,10 @@ Syarat daftar terbuka:
 - ✅ **Tidak pernah menjawab apakah sebuah nomor terdaftar.** Kode dikirim ke setiap nomor yang
   valid, dengan pesan yang sama.
 - ✅ **Tidak meminta NIK atau KK.**
-- ⬜ **Baris patungan yang belum dibayar perlu kedaluwarsa** — belum dibangun.
+- ✅ **Baris patungan yang belum dibayar kedaluwarsa.** Baris yang diambil warga dari aplikasi
+  ditahan `QURBAN_HOLD_DAYS` hari (bawaan 7). Kalau sampai saat itu belum ada setoran, barisnya
+  dilepas kembali ke papan oleh `qurban:release-unpaid-holds` (tiap jam). Setoran pertama
+  menghentikan penahanan. Baris yang diisi pengurus di loket tidak dilepas otomatis.
 - ✅ **Hapus akun.**
 
 **Hapus akun** (`App\Actions\Accounts\CloseOwnAccount`):
@@ -230,8 +233,8 @@ Mei 2027.
 3. Antrean koreksi data warga di web (sekarang hanya di aplikasi)
 4. Uji kirim WhatsApp lewat OpenClaw ke nomor pribadi (`WHATSAPP_OTP_DRIVER=openclaw`): format
    tujuan `628…@s.whatsapp.net` belum pernah dicoba
-5. ~~Daftar terbuka + hapus akun (§8)~~ — selesai 4 Nov 2026. Tersisa: kedaluwarsa baris patungan
-   yang belum dibayar, dan **kebijakan privasi Nexcity** (yang ada milik samsulhadiss.com)
+5. ~~Daftar terbuka + hapus akun (§8)~~ — selesai 4 Nov 2026, termasuk kedaluwarsa baris patungan.
+   Tersisa: **kebijakan privasi Nexcity** (yang ada milik samsulhadiss.com)
 6. Server staging dan CI untuk backend (repo ini belum punya CI)
 7. ~~Amal dan bagian qurban dari loket tidak tersambung ke akun~~ — selesai lewat "Akun warga"
    di form loket ([charity-transactions.md](../modules/charity-transactions.md)). Sekaligus
