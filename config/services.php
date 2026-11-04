@@ -43,6 +43,18 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI')
     ],
 
+    // Sign-in codes over WhatsApp: `log` (development only) or `openclaw`, which
+    // reuses the gateway configured below.
+    // Shown on /hapus-akun for people without the app: an email or WhatsApp
+    // number that takes account-deletion requests.
+    'account_deletion' => [
+        'contact' => env('ACCOUNT_DELETION_CONTACT'),
+    ],
+
+    'whatsapp_otp' => [
+        'driver' => env('WHATSAPP_OTP_DRIVER', 'log'),
+    ],
+
     'openclaw' => [
         'api_key' => env('OPENCLAW_API_KEY'),
         'webhook_url' => env('OPENCLAW_WEBHOOK_URL'),

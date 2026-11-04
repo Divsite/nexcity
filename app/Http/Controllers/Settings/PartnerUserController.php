@@ -56,7 +56,7 @@ class PartnerUserController extends Controller
         $model->password = Hash::make($validated['password']);
 
         if (! empty($validated['phone'])) {
-            $model->phone = phone($validated['phone'], 'MY');
+            $model->phone = phone($validated['phone'], 'ID');
         }
 
         $fileName = Str::random(30) . '.png';
@@ -130,7 +130,7 @@ class PartnerUserController extends Controller
         $user->initial_name = $validated['initial_name'];
 
         if (! empty($validated['phone'])) {
-            $user->phone = phone($validated['phone'], 'MY');
+            $user->phone = phone($validated['phone'], 'ID');
         }
 
         if (! empty($validated['password'])) {

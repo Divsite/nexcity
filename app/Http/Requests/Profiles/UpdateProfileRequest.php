@@ -28,7 +28,7 @@ class UpdateProfileRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'phone:MY,mobile'],
+            'phone' => ['nullable', 'phone:ID,mobile'],
             'avatar' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:2000'],
             'initial_name' => ['required', Rule::in([User::AVATAR_INITIAL_NAME, User::AVATAR_NOT_INITIAL_NAME])],
         ];

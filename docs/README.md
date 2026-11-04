@@ -2,6 +2,14 @@
 
 Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan gap yang masih perlu diselesaikan.
 
+## Mulai dari sini
+
+- `docs/architecture/system-map.md`
+  **Peta sistem**: backend, web, aplikasi, peran, data, dan rencana rilis 2027 — beserta keputusan
+  yang sudah diambil (satu aplikasi dengan pemilih mode) dan alasannya.
+- `docs/architecture/warga-features.md`
+  **Peta fitur warga**: internal/eksternal, siapa melihat apa, lokasi per tingkat, menu placeholder.
+
 ## Struktur
 
 - `docs/architecture/overview.md`
@@ -18,6 +26,8 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Scope produk qurban, alignment dengan Nexcity, dan pembagian V1/V2/V3.
 - `docs/architecture/qurban-domain-model.md`
   Desain domain, ERD konseptual, dan relasi antar entitas qurban.
+- `docs/modules/residents.md`
+  Data warga untuk aplikasi: daftar RT dengan tanda kelengkapan, "Data saya", koreksi dari warga.
 - `docs/modules/stats-summary.md`
   Endpoint statistik agregat untuk Proof Register.
 - `docs/operations/seeders-and-demo-data.md`
@@ -26,6 +36,12 @@ Dokumentasi kerja untuk memahami arsitektur, modul utama, alur data, seeder, dan
   Roadmap implementasi qurban, V1 wajib, dan migration plan.
 - `docs/operations/qurban-v1-migration-sequence.md`
   Daftar final nama file migration V1 dan urutan dependency-nya.
+- `docs/architecture/mosque-structure.md`
+  Struktur organisasi masjid: jabatan struktural vs kepanitiaan, dan kenapa
+  `mosque-officer` (sebenarnya Petugas Zakat) terasa kabur.
+- `docs/operations/authorization-audit.md`
+  Audit otorisasi 8 Agustus 2026: route qurban bisa ditembus URL manual karena
+  `permission:` memeriksa role, bukan level. Berisi urutan perbaikan.
 - `docs/operations/known-gaps-and-next-steps.md`
   Known issues, keputusan tertunda, dan backlog core.
 

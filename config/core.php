@@ -9,7 +9,7 @@ return [
     'profile_route_name' => env('PROFILE_ROUTE_NAME', 'profile.index'),
     'ensure_profile_is_completed' => env('ENSURE_PROFILE_IS_COMPLETED', false),
     'ensure_password_is_changed' => env('ENSURE_PASSWORD_IS_CHANGED', false),
-    'password_route_name' => env('PASSWORD_ROUTE_NAME', 'profile.changed-password-form'),
+    'password_route_name' => env('PASSWORD_ROUTE_NAME', 'profile.change-password-form'),
     'password_rules' => [
         'enabled' => env('PASSWORD_RULES_ENABLED', false),
         'min' => env('PASSWORD_RULES_MIN', 8),
@@ -34,4 +34,8 @@ return [
     'custom_setting_menu_enabled' => env('CUSTOM_SETTING_MENU_ENABLED', false),
     'custom_setting_menu_view' => env('CUSTOM_SETTING_MENU_VIEW', null),
     'allow_multiple_sessions' => env('ALLOW_MULTIPLE_SESSIONS', true),
+
+    // Days a patungan line taken from the app is held without a deposit
+    // before it is released for someone else. See ReleaseUnpaidHolds.
+    'qurban_hold_days' => (int) env('QURBAN_HOLD_DAYS', 7),
 ];

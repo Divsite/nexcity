@@ -20,7 +20,7 @@ class OrganizationOfficerSeeder extends Seeder
             return;
         }
 
-        $levelSlug = 'mosque-officer';
+        $levelSlug = 'mosque-zakat';
         $roleName = 'mosque_admin';
         $organizationSlug = $organization->slug;
 

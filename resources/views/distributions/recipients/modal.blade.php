@@ -71,7 +71,12 @@
                 </div>
 
                 @if($statusAction === 'distributed')
-                    <div class="mb-3">
+                    {{-- The photo uploads as soon as it is picked; saving before that
+                         finishes, or after it fails, stores the status without the photo. --}}
+                    <div class="mb-3"
+                         x-data="{ uploadFailed: false }"
+                         x-on:livewire-upload-start="uploadFailed = false"
+                         x-on:livewire-upload-error="uploadFailed = true">
                         <label class="form-label">{{ __('messages.documentation_photos') }}</label>
                         <input type="file"
                                class="form-control @error('attachments.*') is-invalid @enderror"
@@ -80,6 +85,8 @@
                                capture="environment">
                         @error('attachments') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         @error('attachments.*') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="form-text text-primary" wire:loading wire:target="attachments">{{ __('messages.uploading') }}…</div>
+                        <div class="text-danger small mt-1" x-show="uploadFailed" x-cloak>{{ __('messages.error_during_upload') }}</div>
                         <div class="form-text">{{ __('messages.file_extension_png_jpeg_jpg') }}</div>
                     </div>
                 @endif
@@ -94,7 +101,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ __('messages.close') }}</button>
-                <button type="button" class="btn btn-primary" wire:click="saveStatus">{{ __('messages.save') }}</button>
+                <button type="button" class="btn btn-primary" wire:click="saveStatus" wire:loading.attr="disabled" wire:target="attachments, saveStatus">{{ __('messages.save') }}</button>
             </div>
         </div>
     </div>

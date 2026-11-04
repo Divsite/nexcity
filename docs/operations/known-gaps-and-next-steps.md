@@ -10,8 +10,14 @@
    - distribusi data penerima
 
 2. Dokumentasi foto distribusi
-   - ada laporan upload foto submit tapi data tidak masuk
-   - perlu cek backend `nexcity` dan app `nexcity_mobile`
+   - laporan lama: foto sudah dipilih, submit "berhasil", tapi fotonya tidak masuk
+   - penyebab di form web (modal status penerima): foto diunggah begitu dipilih, dan tombol
+     Simpan bisa ditekan sebelum unggahan selesai atau setelah gagal — status tersimpan tanpa foto.
+     Sudah diperbaiki: tombol Simpan dikunci selama unggah, dan gagal unggah ditampilkan
+   - aplikasi WebView `nexcity_mobile` sudah **dipensiunkan** (Oktober 2026). Penggantinya
+     `nexcity-flutter-apps`, yang mengunggah foto langsung ke
+     `POST /api/v1/distribution-recipients/{recipient}/photos`
+   - sisa: uji foto dari aplikasi native di HP sampai terlihat di web
 
 3. Sumber dana distribusi
    - perlu diuji setelah data distribusi utama lengkap
@@ -42,6 +48,6 @@ Kalau resident tidak muncul di index, cek:
 ## Saran langkah kerja berikutnya
 
 1. bereskan RW04 sampai login dan resident flow valid
-2. cek upload dokumentasi foto dari mobile
+2. uji upload dokumentasi foto dari aplikasi native
 3. lanjut input distribusi amil/internal
 4. setelah data inti masuk, baru verifikasi fund source dan finance summary

@@ -37,6 +37,11 @@ return [
         'sections' => [
             'population' => 'Kependudukan',
             'programs' => 'Program Kerja',
+            'programs_security' => 'Keamanan',
+            'programs_cleanliness' => 'Kebersihan',
+            'programs_social' => 'Sosial',
+            'programs_health' => 'Kesehatan',
+            'programs_finance' => 'Keuangan',
             'communication' => 'Publikasi',
             'organization' => 'Keorganisasian',
             'reports' => 'Laporan',
@@ -50,6 +55,11 @@ return [
             'feedback' => 'Kritik & Saran',
             'membership' => 'Keanggotaan',
             'reports' => 'Laporan RT',
+            'security_watch' => 'Siskamling / Ronda',
+            'cleanliness' => 'Kerja Bakti',
+            'social_distribution' => 'Distribusi Sembako / Bansos',
+            'social_charity' => 'Santunan Warga',
+            'health_posyandu' => 'Posyandu',
         ],
     ],
     'resident' => [

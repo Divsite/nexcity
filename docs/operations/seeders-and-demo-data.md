@@ -11,10 +11,30 @@ Saat ini termasuk:
 - RW 003 + RT 001-006
 - RW 004 + RT 002-003
 
+### Kata sandi bawaan
+
+Seeder masih memberi `password` (kode) — dokumen ini dulu menyebut `passworrd`; keduanya dianggap
+bawaan oleh `App\Support\DefaultPassword`. Sejak 2 November 2026:
+
+- **Aplikasi menolak keduanya.** Warga diarahkan ke masuk lewat WhatsApp; pengurus diminta mengganti
+  dulu lewat web.
+- **Web**: warga ditolak; pengurus boleh masuk tapi tertahan di halaman ganti kata sandi sampai
+  menggantinya.
+- **Setelah deploy**, jalankan:
+
+  ```bash
+  php artisan users:default-passwords                  # laporkan, exit code 1 kalau masih ada
+  php artisan users:default-passwords --retire-warga   # ganti punya warga dengan kata sandi acak
+  ```
+
+  Akun pengurus **tidak** diganti otomatis — banyak yang tidak punya nomor HP, dan kata sandi acak
+  akan mengunci mereka dari web. Perintah itu mendaftar mereka supaya diminta mengganti sendiri.
+
+Akun demo lokal tetap bisa dipakai di web: masuk dengan `password`, lalu ganti.
+
 ### `UserSeeder`
 Menyiapkan akun user demo dasar.
 Catatan saat ini:
-- password default disamakan menjadi `passworrd`
 - akun RT RW04 harus ada di sini agar bisa login
 
 ### `OrganizationSeeder`
@@ -24,8 +44,7 @@ Penting:
 - dia akan attach member jika user dengan email itu sudah ada
 
 ### `OrganizationOfficerSeeder`
-Menyiapkan batch petugas zakat masjid untuk organisasi Alamanah.
-Password default juga mengikuti `passworrd`.
+Menyiapkan batch petugas zakat masjid untuk organisasi Alamanah. Kata sandinya bawaan — lihat di atas.
 
 ## Urutan seed yang aman untuk RT RW04
 

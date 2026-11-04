@@ -92,22 +92,57 @@ class UserMenuSeeder extends Seeder
     protected function rtMenus(): array
     {
         return [
+            // Kependudukan
             $this->placeholderMenu('rt', 'menu.rt.sections.population', 'menu.rt.items.citizen_data', 'ri-team-line', 'rt-citizen-data', 10, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-residents'],
             ]),
+
+            // Program Kerja — Umum
             $this->placeholderMenu('rt', 'menu.rt.sections.programs', 'menu.rt.items.inventory', 'ri-archive-drawer-line', 'rt-inventory', 20, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-inventory'],
             ]),
-            $this->placeholderMenu('rt', 'menu.rt.sections.programs', 'menu.rt.items.community_events', 'ri-calendar-event-line', 'rt-events', 30, [
+
+            // Keamanan
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_security', 'menu.rt.items.security_watch', 'ri-shield-line', 'rt-security-watch', 100, [
+                'organization_types' => ['rt'],
+                'permissions' => ['browse-rt-security'],
+            ]),
+
+            // Kebersihan
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_cleanliness', 'menu.rt.items.cleanliness', 'ri-recycle-line', 'rt-cleanliness', 200, [
+                'organization_types' => ['rt'],
+                'permissions' => ['browse-rt-cleanliness'],
+            ]),
+
+            // Sosial
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_social', 'menu.rt.items.social_distribution', 'ri-gift-line', 'rt-social-distribution', 300, [
+                'organization_types' => ['rt'],
+                'permissions' => ['browse-rt-social-distribution'],
+            ]),
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_social', 'menu.rt.items.social_charity', 'ri-hand-heart-line', 'rt-social-charity', 310, [
+                'organization_types' => ['rt'],
+                'permissions' => ['browse-rt-social-charity'],
+            ]),
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_social', 'menu.rt.items.community_events', 'ri-calendar-event-line', 'rt-events', 320, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-events'],
             ]),
-            $this->placeholderMenu('rt', 'menu.rt.sections.programs', 'menu.rt.items.citizen_dues', 'ri-money-dollar-circle-line', 'rt-dues', 40, [
+
+            // Kesehatan
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_health', 'menu.rt.items.health_posyandu', 'ri-heart-pulse-line', 'rt-health-posyandu', 400, [
+                'organization_types' => ['rt'],
+                'permissions' => ['browse-rt-health'],
+            ]),
+
+            // Keuangan
+            $this->placeholderMenu('rt', 'menu.rt.sections.programs_finance', 'menu.rt.items.citizen_dues', 'ri-money-dollar-circle-line', 'rt-dues', 500, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-dues'],
             ]),
+
+            // Publikasi
             $this->placeholderMenu('rt', 'menu.rt.sections.communication', 'menu.rt.items.news', 'ri-newspaper-line', 'rt-news', 50, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-news'],
@@ -116,10 +151,14 @@ class UserMenuSeeder extends Seeder
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-feedback'],
             ]),
+
+            // Keorganisasian
             $this->placeholderMenu('rt', 'menu.rt.sections.organization', 'menu.rt.items.membership', 'ri-group-line', 'rt-membership', 70, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-membership'],
             ]),
+
+            // Laporan
             $this->placeholderMenu('rt', 'menu.rt.sections.reports', 'menu.rt.items.reports', 'ri-file-list-3-line', 'rt-reports', 80, [
                 'organization_types' => ['rt'],
                 'permissions' => ['browse-rt-reports'],

@@ -13,6 +13,11 @@
                         </div>
                         <div class="col-sm-auto">
                             <div class="d-flex gap-1 flex-wrap">
+                                @can('browse-rt-residents')
+                                    <a href="{{ route('residents.qr-cards') }}" target="_blank" class="btn btn-outline-primary">
+                                        <i class="ri-qr-code-line align-bottom me-1"></i> {{ __('messages.print_all_qr_cards') }}
+                                    </a>
+                                @endcan
                                 @canany(['add-residents', 'add-rt-residents'])
                                     <a href="{{ route('residents.create') }}" class="btn btn-success">
                                         <i class="ri-add-line align-bottom me-1"></i> {{ __('messages.create') }}

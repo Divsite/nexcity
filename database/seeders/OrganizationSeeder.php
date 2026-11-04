@@ -254,7 +254,7 @@ class OrganizationSeeder extends Seeder
             ['name' => 'Ketua DKM', 'slug' => 'mosque-superadmin', 'description' => 'Akses penuh modul masjid'],
             ['name' => 'Sekretaris Masjid', 'slug' => 'mosque-secretary', 'description' => 'Administrasi, laporan, dan data jamaah'],
             ['name' => 'Keuangan Masjid', 'slug' => 'mosque-finance', 'description' => 'Kelola zakat & laporan'],
-            ['name' => 'Petugas Zakat', 'slug' => 'mosque-officer', 'description' => 'Distribusi & scan barcode'],
+            ['name' => 'Petugas Zakat', 'slug' => 'mosque-zakat', 'description' => 'Distribusi & scan barcode'],
             ['name' => 'Petugas Qurban', 'slug' => 'mosque-qurban', 'description' => 'Kelola kupon qurban & scan'],
             ['name' => 'Petugas Inventaris', 'slug' => 'mosque-inventory', 'description' => 'Kelola inventaris masjid'],
             ['name' => 'Petugas Donasi/CRM', 'slug' => 'mosque-crm', 'description' => 'Kelola donatur & CRM'],
@@ -277,6 +277,11 @@ class OrganizationSeeder extends Seeder
                 'browse-mosque-charity-payments', 'read-mosque-charity-payments', 'edit-mosque-charity-payments', 'add-mosque-charity-payments', 'delete-mosque-charity-payments',
                 'browse-qurban', 'read-qurban', 'edit-qurban', 'add-qurban', 'delete-qurban',
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions', 'edit-mosque-charity-distributions', 'add-mosque-charity-distributions', 'delete-mosque-charity-distributions',
+                // Distribution recipients: no level granted these, so once
+                // authorization becomes level-based the DKM chair would have
+                // lost access to them. Audit 2026-08-08.
+                'browse-mosque-charity-distribution-recipients', 'read-mosque-charity-distribution-recipients', 'edit-mosque-charity-distribution-recipients', 'add-mosque-charity-distribution-recipients', 'delete-mosque-charity-distribution-recipients',
+                'print-mosque-charity-transactions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
                 'browse-mosque-inventory', 'read-mosque-inventory', 'edit-mosque-inventory', 'add-mosque-inventory', 'delete-mosque-inventory',
                 'browse-mosque-crm', 'read-mosque-crm', 'edit-mosque-crm', 'add-mosque-crm', 'delete-mosque-crm',
@@ -293,8 +298,11 @@ class OrganizationSeeder extends Seeder
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions',
                 'browse-mosque-charity-reports', 'browse-mosque-distribution-reports',
             ],
-            'mosque-officer' => [
+            'mosque-zakat' => [
                 'browse-mosque-charity-transactions', 'read-mosque-charity-transactions', 'edit-mosque-charity-transactions', 'add-mosque-charity-transactions',
+                // Recording a transaction without being able to print its
+                // receipt is a broken counter workflow. Added 2026-08-08.
+                'print-mosque-charity-transactions',
                 'browse-qurban', 'read-qurban',
                 'browse-mosque-charity-distributions', 'read-mosque-charity-distributions', 'add-mosque-charity-distributions',
                 'scan-qurban-coupon', 'scan-zakat-coupon',
@@ -332,8 +340,19 @@ class OrganizationSeeder extends Seeder
                 'browse-rt-dues', 'read-rt-dues', 'edit-rt-dues', 'add-rt-dues',
                 'browse-rt-reports',
             ],
+            // A real position, held by the one or two people answerable for a
+            // distribution — not an account for every pair of hands. Helpers
+            // brought along on the day are recorded in the distribution's
+            // notes, which keeps the resident list free of accounts that are
+            // used once and never again.
+            //
+            // Reading the resident list is the job, not a privilege: you cannot
+            // hand out sembako without knowing who is on it. Scanning alone
+            // left this level with no screen at all — someone logged in and
+            // found an empty sidebar.
             'rt-field-officer' => [
                 'scan-resident-qr',
+                'browse-rt-residents', 'read-rt-residents',
             ],
             'rt-humas' => [
                 'browse-rt-events', 'browse-rt-news', 'browse-rt-feedback',
@@ -433,7 +452,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'alamanah.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Zakat',
                             'responsibility_area' => 'Distribusi, pencatatan, dan scan barcode warga',
@@ -551,7 +570,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'darulmuminin.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Operasional',
                             'responsibility_area' => 'Distribusi logistik & barcode warga',
@@ -669,7 +688,7 @@ class OrganizationSeeder extends Seeder
                     [
                         'email' => 'alfalah.officer@nexcity.local',
                         'role' => 'mosque_admin',
-                        'level_slug' => 'mosque-officer',
+                        'level_slug' => 'mosque-zakat',
                         'mosque_profile' => [
                             'position' => 'Petugas Lapangan',
                             'responsibility_area' => 'Pelaksanaan distribusi & pemindaian barcode',

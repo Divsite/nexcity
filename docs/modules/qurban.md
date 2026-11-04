@@ -169,3 +169,20 @@ Untuk fase awal, menu yang paling masuk akal:
 - `Operasional`
 - `Distribusi Daging`
 - `Laporan`
+
+
+## Penahanan baris patungan (4 November 2026)
+
+Baris yang diambil warga dari aplikasi (`POST /api/v1/qurban-slots` oleh bukan pengurus) **ditahan,
+belum dimiliki**, sampai setoran pertama masuk.
+
+| | |
+|---|---|
+| Lama penahanan | `QURBAN_HOLD_DAYS` (bawaan 7 hari) → `qurban_orders.hold_expires_at` |
+| Setoran pertama | `hold_expires_at` dikosongkan; baris aman |
+| Lewat batas tanpa setoran | `App\Actions\Qurban\ReleaseUnpaidHolds` (perintah `qurban:release-unpaid-holds`, terjadwal tiap jam): alokasi dihapus sehingga baris kembali kosong di papan, item `cancelled`, order `cancelled` + `expired_at` + catatan "Dilepas otomatis" |
+| Baris dari loket (pengurus) | Tidak pernah dilepas otomatis |
+| Yang dilihat warga | `pay_before` di papan (baris miliknya), "Qurban saya", dan Aktivitas saya |
+
+Deploy: jalankan scheduler Laravel (`* * * * * php artisan schedule:run`). Tanpa scheduler, baris
+tidak pernah dilepas.
